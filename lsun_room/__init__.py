@@ -1,8 +1,11 @@
 import os
 
-TRAIN = 'training'
-VALIDATE = 'validation'
-TEST = 'testing'
+
+class Phase:
+    TRAIN = 'training'
+    VALIDATE = 'validation'
+    TEST = 'testing'
+
 
 root_dir = '../data/'
 
@@ -15,7 +18,7 @@ layout_pattern = layout_dir + '%s.mat'
 layout_image_pattern = layout_image_dir + '%s.png'
 
 data_path = {
-    TRAIN: os.path.join(root_dir, 'training.mat'),
-    VALIDATE: os.path.join(root_dir, 'validation.mat'),
-    TEST: os.path.join(root_dir, 'testing.mat'),
+    Phase.TRAIN: os.path.join(root_dir, 'training.mat'),
+    Phase.VALIDATE: os.path.join(root_dir, 'validation.mat'),
+    Phase.TEST: os.path.join(root_dir, 'testing.mat'),
 }
