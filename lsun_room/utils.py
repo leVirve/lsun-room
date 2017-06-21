@@ -6,7 +6,9 @@ import scipy.io as sio
 
 
 def load_mat(path):
-    return sio.loadmat(path)
+    mat = sio.loadmat(path)
+    mat = {k: v for k, v in mat.items() if not k.startswith('__')}
+    return list(mat.values())[0]
 
 
 def load_image(path):
