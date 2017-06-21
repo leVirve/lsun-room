@@ -50,7 +50,7 @@ class Item():
 
 class Dataset():
 
-    def __init__(self, root_dir, state):
+    def __init__(self, root_dir, phase):
         self.root_dir = root_dir
         self.image = os.path.join(root_dir, 'images/')
         self.layout = os.path.join(root_dir, 'layout_seg/')
@@ -60,10 +60,10 @@ class Dataset():
         Item.layout_pattern = self.layout + '%s.mat'
         Item.layout_image_pattern = self.layout_image + '%s.png'
 
-        self.items = self._load(state)
+        self.items = self._load(phase)
 
-    def _load(self, state):
-        path = os.path.join(self.root_dir, '%s.mat' % state)
+    def _load(self, phase):
+        path = os.path.join(self.root_dir, '%s.mat' % phase)
         meta = load_mat(path)[0]
         return [
             Item(

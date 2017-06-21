@@ -11,11 +11,11 @@
   - Output visualized layout image (range from 0-255)
 
   ```bash
-  python relabel.py --visualized
+  python re_label.py --visualized
   ```
 
   - Output layout image (range from 1-5)
 
   ```bash
-  python relabel.py
+  python re_label.py
   ```
