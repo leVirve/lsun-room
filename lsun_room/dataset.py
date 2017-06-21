@@ -25,7 +25,7 @@ class Item():
     def layout(self):
         if self._layout is None:
             path = self.layout_pattern % self.name
-            self._layout = load_mat(path)
+            self._layout = np.expand_dims(load_mat(path), axis=2)
         return self._layout
 
     def remap_layout(self):
