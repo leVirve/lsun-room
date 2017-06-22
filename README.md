@@ -17,7 +17,7 @@
 
 - Updata `fcn_models`
   ```bash
-  git submodule update --recursive
+  git submodule update --recursive --remote
   ```
 
 ## Tools
