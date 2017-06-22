@@ -41,7 +41,7 @@ class DatasetIterator(KerasIterator):
             e = self.files[j]
             img, lbl = e.image, e.layout
             img = normalize(resize(img, image_shape))
-            lbl = resize(lbl - 1, label_shape)
+            lbl = resize(np.clip(lbl, 1, 5) - 1, label_shape)
 
             batch_img[i], batch_lbl[i] = img, lbl
 

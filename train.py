@@ -4,17 +4,19 @@ import keras
 from lsun_room import Phase
 from dataset import DataGenerator
 
+
 from fcn_models.fcn32s_vgg16 import fcn_vggbase
 from fcn_models.fcn_score import (
-    softmax_sparse_crossentropy_ignoring_last_label,
-    sparse_accuracy_ignoring_last_label
+    sparse_pixelwise_accuracy,
+    corssentropy2d
 )
 
 
 def main():
+    experiment_name = 'vggbase_go_adam_lr1e-4'
+    initial_weight_path = '../model_June13_sgd_60kitr.h5'
 
-    experiment_name = 'vggbase_adam_lr1e-4'
-
+    dataset_root = '../data'
     size = 512
     workers = 16
     epochs = 50
@@ -23,36 +25,37 @@ def main():
     optimizer = keras.optimizers.Adam(lr=1e-4)
 
     callbacks = [
-        keras.callbacks.CSVLogger('output/training.log'),
+        keras.callbacks.CSVLogger('%s/training.log' % experiment_name),
         keras.callbacks.ReduceLROnPlateau(
             monitor='val_loss', factor=0.5, patience=3, min_lr=1e-8),
         keras.callbacks.ModelCheckpoint(
-            filepath='output/weights.{epoch:02d}.hdf5',
+            filepath='%s/weights.{epoch:02d}.hdf5' % experiment_name,
             verbose=1, save_best_only=True, save_weights_only=True),
         keras.callbacks.TensorBoard(
             log_dir='./logs/%s' % experiment_name,
             batch_size=batch_size, write_graph=False)
     ]
 
+    os.makedirs(experiment_name, exist_ok=True)
+
     data_gen = DataGenerator()
     train_generator = data_gen.flow_from_directory(
-        directory='../data', phase=Phase.TRAIN,
+        directory=dataset_root, phase=Phase.TRAIN,
         target_size=(size, size),
         batch_size=batch_size, shuffle=True)
     validation_generator = data_gen.flow_from_directory(
-        directory='../data', phase=Phase.VALIDATE,
+        directory=dataset_root, phase=Phase.VALIDATE,
         target_size=(size, size),
         batch_size=batch_size)
-    os.makedirs('output/', exist_ok=True)
 
     model = fcn_vggbase(
         input_shape=(size, size, 3),
-        pretrained_weights='../model_June13_sgd_60kitr.h5')
+        pretrained_weights=initial_weight_path)
     model.summary()
     model.compile(
         optimizer=optimizer,
-        loss=[softmax_sparse_crossentropy_ignoring_last_label],
-        metrics=[sparse_accuracy_ignoring_last_label])
+        loss=[corssentropy2d],
+        metrics=[sparse_pixelwise_accuracy])
     model.fit_generator(
         generator=train_generator,
         steps_per_epoch=(train_generator.samples + 1) // batch_size,
