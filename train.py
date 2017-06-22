@@ -11,26 +11,28 @@ from fcn_models.fcn_score import (
 )
 
 
-optimizer = keras.optimizers.RMSprop(lr=1e-4)
-
-callbacks = [
-    keras.callbacks.CSVLogger('output/training.log'),
-    keras.callbacks.ReduceLROnPlateau(
-        monitor='val_loss', factor=0.5, patience=3, verbose=1, min_lr=1e-8),
-    keras.callbacks.ModelCheckpoint(
-        filepath='output/weights.{epoch:02d}.hdf5',
-        verbose=1, save_best_only=True, save_weights_only=True),
-    keras.callbacks.TensorBoard(
-        log_dir='./logs', batch_size=32, write_graph=False)
-]
-
-
 def main():
+
+    experiment_name = 'vggbase_adam_lr1e-4'
 
     size = 512
     workers = 16
     epochs = 50
     batch_size = 8
+
+    optimizer = keras.optimizers.Adam(lr=1e-4)
+
+    callbacks = [
+        keras.callbacks.CSVLogger('output/training.log'),
+        keras.callbacks.ReduceLROnPlateau(
+            monitor='val_loss', factor=0.5, patience=3, min_lr=1e-8),
+        keras.callbacks.ModelCheckpoint(
+            filepath='output/weights.{epoch:02d}.hdf5',
+            verbose=1, save_best_only=True, save_weights_only=True),
+        keras.callbacks.TensorBoard(
+            log_dir='./logs/%s' % experiment_name,
+            batch_size=batch_size, write_graph=False)
+    ]
 
     data_gen = DataGenerator()
     train_generator = data_gen.flow_from_directory(
