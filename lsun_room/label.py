@@ -25,14 +25,12 @@ def type0(e):
 
 
 def type1(e):
-    ''' ground truth: pt2-pt3 error '''
+    ''' few ground truth labels pt2-pt3 error '''
     return [
         (Layout.left, center_point(e.points, [1, 2, 3])),
         (Layout.right, center_point(e.points, [4, 5, 6])),
-        (Layout.frontal, center_point(e.points, [1, 3, 4, 5])),
-        (Layout.floor, center_point(e.points, [1, 2, 4, 6])),
-        # (Layout.frontal, center_point(e.points, [1, 2, 4, 5])),
-        # (Layout.floor, center_point(e.points, [1, 3, 4, 6])),
+        (Layout.frontal, center_point(e.points, [1, 2, 4, 5])),
+        (Layout.floor, center_point(e.points, [1, 3, 4, 6])),
     ]
 
 
