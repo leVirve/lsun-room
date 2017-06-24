@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 from keras import backend as K
 from keras.preprocessing.image import Iterator as KerasIterator
@@ -36,21 +37,20 @@ class DatasetIterator(KerasIterator):
         batch_img = np.zeros((current_batch_size,) + image_shape, dtype=K.floatx())
         batch_lbl = np.zeros((current_batch_size,) + label_shape, dtype=K.floatx())
 
-        # build batch of image data
         for i, j in enumerate(index_array):
             e = self.files[j]
             img, lbl = e.image, e.layout
-            img = normalize(resize(img, image_shape))
-            lbl = resize(np.clip(lbl, 1, 5) - 1, label_shape)
+            img = normalize(resize(img, self.target_size))
+            lbl = resize(np.clip(lbl, 1, 5) - 1, self.target_size)
 
-            batch_img[i], batch_lbl[i] = img, lbl
+            batch_img[i], batch_lbl[i] = img, np.expand_dims(lbl, axis=2)
 
         return batch_img, batch_lbl
 
 
 def resize(img, shape):
-    return np.resize(img, shape)
+    return cv2.resize(img, shape)
 
 
 def normalize(img):
-    return img * 2 - 1
+    return (img.astype('float') / 255 - 0.5) / 0.5
