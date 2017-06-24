@@ -1,3 +1,4 @@
+import hack_path  # noqa
 import sys
 import time
 from multiprocessing import Pool, cpu_count
