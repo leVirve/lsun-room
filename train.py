@@ -13,7 +13,7 @@ from fcn_models.fcn_score import (
 
 
 def main():
-    os.makedirs(cfg.experiment_name, exist_ok=True)
+    os.makedirs('output/' + cfg.experiment_name, exist_ok=True)
 
     data_gen = DataGenerator()
     train_generator = data_gen.flow_from_directory(
