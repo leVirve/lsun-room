@@ -13,6 +13,8 @@ class Item():
             setattr(self, k, v)
         self._image = None
         self._layout = None
+        self.image_path = self.image_pattern % self.name
+        self.layout_path = self.layout_image_pattern % self.name
 
     @property
     def image(self):
