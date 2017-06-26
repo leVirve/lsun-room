@@ -22,7 +22,8 @@ class DatasetIterator(KerasIterator):
                  target_size=(256, 256), phase=Phase.TRAIN,
                  batch_size=32, shuffle=True, seed=None):
         self.image_data_generator = image_data_generator
-        self.target_size = tuple(target_size)
+        self.load_size = (target_size[0] + 48, target_size[1] + 48)
+        self.crop_size = (target_size[0], target_size[1])
 
         self.dataset = Dataset(root_dir=directory, phase=phase)
         self.filenames = [e.name for e in self.dataset.items]
@@ -35,8 +36,8 @@ class DatasetIterator(KerasIterator):
         with self.lock:
             index_array, current_index, current_batch_size = next(self.index_generator)
 
-        image_shape = self.target_size + (3,)
-        label_shape = self.target_size + (1,)
+        image_shape = self.crop_size + (3,)
+        label_shape = self.crop_size + (1,)
         batch_img = np.zeros((current_batch_size,) + image_shape, dtype=K.floatx())
         batch_lbl = np.zeros((current_batch_size,) + label_shape, dtype=K.floatx())
 
@@ -49,18 +50,33 @@ class DatasetIterator(KerasIterator):
             img = load_img(image_path)
             lbl = load_img(label_path, grayscale=True)
 
-            # random horizental flip
-            if np.random.random() < 0.5:
-                img = flip_axis(img, 2)
-                lbl = flip_axis(lbl, 2)
-
             # resize image
-            img = resize(img, self.target_size)
-            lbl = resize(lbl, self.target_size)
+            w, h = img.size
+            sz = self.load_size[0]
+            if w < h:
+                target_size = (sz, int(h * (sz / w)))
+            else:
+                target_size = (int(w * (sz / h)), sz)
+
+            img = resize(img, target_size)
+            lbl = resize(lbl, target_size)
 
             # img to array
             img = img_to_array(img)
             lbl = img_to_array(lbl)
+
+            # random crop
+            h, w, _ = img.shape
+            th, tw = self.crop_size
+            x = np.random.randint(0, w - tw)
+            y = np.random.randint(0, h - th)
+            img = img[y:y + th, x:x + tw, :]
+            lbl = lbl[y:y + th, x:x + tw, :]
+
+            # random horizental flip
+            if np.random.random() < 0.5:
+                img = flip_axis(img, 2)
+                lbl = flip_axis(lbl, 2)
 
             img = rgb_to_bgr(img)
             img = remove_mean(img)
@@ -70,13 +86,6 @@ class DatasetIterator(KerasIterator):
 
         return batch_img, batch_lbl
 
-
-class Transformer():
-
-    def __init__(self, target_size):
-        self.target_size = target_size
-
-    def transform(self)
 
 def resize(img, shape):
     return img.resize(shape, Image.NEAREST)
