@@ -51,32 +51,34 @@ class DatasetIterator(KerasIterator):
             lbl = load_img(label_path, grayscale=True)
 
             # resize image
-            w, h = img.size
-            sz = self.load_size[0]
-            if w < h:
-                target_size = (sz, int(h * (sz / w)))
-            else:
-                target_size = (int(w * (sz / h)), sz)
+            # w, h = img.size
+            # sz = self.load_size[0]
+            # if w < h:
+            #     target_size = (sz, int(h * (sz / w)))
+            # else:
+            #     target_size = (int(w * (sz / h)), sz)
 
-            img = resize(img, target_size)
-            lbl = resize(lbl, target_size)
+            img = img.resize(self.crop_size, Image.BICUBIC)
+            lbl = lbl.resize(self.crop_size, Image.BICUBIC)
+            # img = resize(img, target_size)
+            # lbl = resize(lbl, target_size)
 
             # img to array
             img = img_to_array(img)
             lbl = img_to_array(lbl)
 
             # random crop
-            h, w, _ = img.shape
-            th, tw = self.crop_size
-            x = np.random.randint(0, w - tw)
-            y = np.random.randint(0, h - th)
-            img = img[y:y + th, x:x + tw, :]
-            lbl = lbl[y:y + th, x:x + tw, :]
+            # h, w, _ = img.shape
+            # th, tw = self.crop_size
+            # x = np.random.randint(0, w - tw)
+            # y = np.random.randint(0, h - th)
+            # img = img[y:y + th, x:x + tw, :]
+            # lbl = lbl[y:y + th, x:x + tw, :]
 
             # random horizental flip
-            if np.random.random() < 0.5:
-                img = flip_axis(img, 2)
-                lbl = flip_axis(lbl, 2)
+            # if np.random.random() < 0.5:
+            #     img = flip_axis(img, 2)
+            #     lbl = flip_axis(lbl, 2)
 
             img = rgb_to_bgr(img)
             img = remove_mean(img)
