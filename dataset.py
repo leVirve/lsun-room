@@ -5,7 +5,7 @@ from PIL import Image
 from keras import backend as K
 from keras.preprocessing.image import Iterator as KerasIterator
 from keras.preprocessing.image import ImageDataGenerator as KerasDataGenerator
-from keras.preprocessing.image import load_img, img_to_array, flip_axis
+from keras.preprocessing.image import load_img, img_to_array
 
 from lsun_room import Phase, Dataset
 
@@ -19,10 +19,9 @@ class DataGenerator(KerasDataGenerator):
 class DatasetIterator(KerasIterator):
 
     def __init__(self, directory, image_data_generator,
-                 target_size=(256, 256), phase=Phase.TRAIN,
+                 target_size, phase=Phase.TRAIN,
                  batch_size=32, shuffle=True, seed=None):
         self.image_data_generator = image_data_generator
-        self.load_size = (target_size[0] + 48, target_size[1] + 48)
         self.crop_size = (target_size[0], target_size[1])
 
         self.dataset = Dataset(root_dir=directory, phase=phase)
@@ -50,35 +49,12 @@ class DatasetIterator(KerasIterator):
             img = load_img(image_path)
             lbl = load_img(label_path, grayscale=True)
 
-            # resize image
-            # w, h = img.size
-            # sz = self.load_size[0]
-            # if w < h:
-            #     target_size = (sz, int(h * (sz / w)))
-            # else:
-            #     target_size = (int(w * (sz / h)), sz)
-
             img = img.resize(self.crop_size, Image.BICUBIC)
-            lbl = lbl.resize(self.crop_size, Image.BICUBIC)
-            # img = resize(img, target_size)
-            # lbl = resize(lbl, target_size)
+            lbl = lbl.resize(self.crop_size, Image.NEAREST)
 
             # img to array
             img = img_to_array(img)
             lbl = img_to_array(lbl)
-
-            # random crop
-            # h, w, _ = img.shape
-            # th, tw = self.crop_size
-            # x = np.random.randint(0, w - tw)
-            # y = np.random.randint(0, h - th)
-            # img = img[y:y + th, x:x + tw, :]
-            # lbl = lbl[y:y + th, x:x + tw, :]
-
-            # random horizental flip
-            # if np.random.random() < 0.5:
-            #     img = flip_axis(img, 2)
-            #     lbl = flip_axis(lbl, 2)
 
             img = rgb_to_bgr(img)
             img = remove_mean(img)
