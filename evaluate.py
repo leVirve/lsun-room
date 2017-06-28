@@ -6,7 +6,7 @@ import skimage.color
 
 import click
 from lsun_room import Phase, Dataset
-from fcn_models.fcn32s_vgg16 import fcn_vggbase
+from fcn import fcn32s
 
 
 def labelcolormap(N=256):
@@ -42,7 +42,7 @@ def main(weight_path, max_length):
     os.makedirs(images_folder, exist_ok=True)
     os.makedirs(layout_folder, exist_ok=True)
 
-    model = fcn_vggbase(pretrained_weights=weight_path, crop=False)
+    model = fcn32s(weights=weight_path, crop=False)
 
     cmap = labelcolormap(5)
 
