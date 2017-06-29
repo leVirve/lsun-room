@@ -22,7 +22,7 @@ class DatasetIterator(KerasIterator):
                  target_size, phase=Phase.TRAIN,
                  batch_size=32, shuffle=True, seed=None):
         self.image_data_generator = image_data_generator
-        self.crop_size = (target_size[0], target_size[1])
+        self.target_size = target_size
 
         self.dataset = Dataset(root_dir=directory, phase=phase)
         self.filenames = [e.name for e in self.dataset.items]
@@ -35,8 +35,8 @@ class DatasetIterator(KerasIterator):
         with self.lock:
             index_array, current_index, current_batch_size = next(self.index_generator)
 
-        image_shape = self.crop_size + (3,)
-        label_shape = self.crop_size + (1,)
+        image_shape = self.target_size + (3,)
+        label_shape = self.target_size + (1,)
         batch_img = np.zeros((current_batch_size,) + image_shape, dtype=K.floatx())
         batch_lbl = np.zeros((current_batch_size,) + label_shape, dtype=K.floatx())
 
@@ -49,8 +49,8 @@ class DatasetIterator(KerasIterator):
             img = load_img(image_path)
             lbl = load_img(label_path, grayscale=True)
 
-            img = img.resize(self.crop_size, Image.BICUBIC)
-            lbl = lbl.resize(self.crop_size, Image.NEAREST)
+            img = img.resize(self.target_size, Image.BICUBIC)
+            lbl = lbl.resize(self.target_size, Image.NEAREST)
 
             # img to array
             img = img_to_array(img)

@@ -49,7 +49,7 @@ def main(weight_path, max_length):
     dataset = Dataset(root_dir=dataset_root, phase=Phase.VALIDATE)
     images = [e.image for e in dataset.items]
 
-    for img, e in zip(images, dataset.items):
+    for i, (img, e) in enumerate(zip(images, dataset.items)):
         h, w, _ = img.shape
         if h > w and h > max_length:
             h, w = max_length, int(w * float(max_length) / h)
@@ -76,7 +76,7 @@ def main(weight_path, max_length):
         skimage.io.imsave(images_folder + '%s.png' % e.name, out)
         skimage.io.imsave(layout_folder + '%s.png' % e.name, pred_img)
 
-        print('--> Done', e.name)
+        print('--> #%d Done' % i, e.name)
 
 
 if __name__ == '__main__':
