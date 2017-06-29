@@ -30,10 +30,13 @@ def labelcolormap(N=256):
     return cmap
 
 
+phases = {'train': Phase.TRAIN, 'val': Phase.VALIDATE, 'test': Phase.TEST}
+
+
 @click.command()
 @click.argument('weight_path', type=click.Path(exists=True))
-@click.option('--max_length', type=int, default=2048)
-def main(weight_path, max_length):
+@click.option('--phase', type=click.Choice(['train', 'val', 'test']), default='val')  # noqa
+def main(weight_path, phase):
     dataset_root = '../data'
 
     experiment_name = weight_path.split('/')[-2]
@@ -42,19 +45,15 @@ def main(weight_path, max_length):
     os.makedirs(images_folder, exist_ok=True)
     os.makedirs(layout_folder, exist_ok=True)
 
-    model = fcn32s(weights=weight_path, crop=False)
+    model = fcn32s(weights=weight_path)
 
     cmap = labelcolormap(5)
 
-    dataset = Dataset(root_dir=dataset_root, phase=Phase.VALIDATE)
+    dataset = Dataset(root_dir=dataset_root, phase=phases[phase])
     images = [e.image for e in dataset.items]
 
     for i, (img, e) in enumerate(zip(images, dataset.items)):
-        h, w, _ = img.shape
-        if h > w and h > max_length:
-            h, w = max_length, int(w * float(max_length) / h)
-        elif w > h and w > max_length:
-            h, w = int(h * float(max_length) / w), max_length
+        h, w = 404, 404
 
         img = scipy.misc.imresize(img, (h, w))
 
@@ -62,17 +61,8 @@ def main(weight_path, max_length):
         pred = model.predict(batched_img)[0, ...]
 
         pred_img = np.argmax(pred, axis=2)
-        print('... origin >> (%d, %d)' % (h, w))
-        print('... predict >>', pred_img.shape)
-        x = (pred_img.shape[0] - h) // 2
-        y = (pred_img.shape[1] - w) // 2
-        pred_img = pred_img[x:x + h, y:y + w]
-        print('... cropped >>', pred_img.shape)
-
         out = skimage.color.label2rgb(pred_img, colors=cmap[1:], bg_label=0)
 
-        pred_img = scipy.misc.imresize(pred_img, (h, w))
-        out = scipy.misc.imresize(out, (h, w), interp='nearest')
         skimage.io.imsave(images_folder + '%s.png' % e.name, out)
         skimage.io.imsave(layout_folder + '%s.png' % e.name, pred_img)
 

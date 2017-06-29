@@ -39,8 +39,7 @@ def sparse_pixelwise_accuracy(y_true, y_pred):
     return K.mean(K.equal(_y_true, tf.to_float(K.argmax(_y_pred, axis=-1))))
 
 
-def fcn32s(input_shape=(None, None, 3), num_class=5,
-           weights=None, crop=True):
+def fcn32s(input_shape=(None, None, 3), num_class=5, weights=None):
 
     img_input = Input(shape=input_shape)
     tf.summary.image('input', img_input, max_outputs=8)
@@ -53,9 +52,7 @@ def fcn32s(input_shape=(None, None, 3), num_class=5,
         kernel_size=(64, 64), strides=(32, 32),
         kernel_initializer='he_normal',
         padding='valid', use_bias=False, name='upscore_lsun')(x)
-
-    if crop:
-        x = Cropping2D(cropping=((22, 22), (22, 22)), name='score_lsun')(x)
+    x = Cropping2D(cropping=((22, 22), (22, 22)), name='score_lsun')(x)
 
     model = keras.models.Model(img_input, x, name='fcn32s')
 
@@ -68,8 +65,7 @@ def fcn32s(input_shape=(None, None, 3), num_class=5,
     return model
 
 
-def fcn16s(input_shape=(None, None, 3), num_class=5,
-           weights=None, crop=True):
+def fcn16s(input_shape=(None, None, 3), num_class=5, weights=None):
 
     img_input = Input(shape=input_shape)
     x = ZeroPadding2D(padding=(100, 100), name='pad1')(img_input)
