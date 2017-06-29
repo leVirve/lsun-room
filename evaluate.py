@@ -1,12 +1,13 @@
 import os
-import scipy
+import click
 import numpy as np
 import skimage.io
 import skimage.color
 
-import click
-from lsun_room import Phase, Dataset
+import config as cfg
 from fcn import fcn32s
+from dataset import DataGenerator
+from lsun_room import Phase
 
 
 def labelcolormap(N=256):
@@ -37,8 +38,6 @@ phases = {'train': Phase.TRAIN, 'val': Phase.VALIDATE, 'test': Phase.TEST}
 @click.argument('weight_path', type=click.Path(exists=True))
 @click.option('--phase', type=click.Choice(['train', 'val', 'test']), default='val')  # noqa
 def main(weight_path, phase):
-    dataset_root = '../data'
-
     experiment_name = weight_path.split('/')[-2]
     images_folder = 'output_images/%s/' % experiment_name
     layout_folder = 'output_layout/%s/' % experiment_name
@@ -47,26 +46,28 @@ def main(weight_path, phase):
 
     model = fcn32s(weights=weight_path)
 
+    data_gen = DataGenerator()
+    data_generator = data_gen.flow_from_directory(
+        directory=cfg.dataset_root, phase=phases[phase],
+        target_size=(cfg.size, cfg.size),
+        batch_size=1)
+
+    result_gen = model.predict_generator(
+        data_generator,
+        steps=data_generator.samples,
+        workers=cfg.workers)
+
     cmap = labelcolormap(5)
 
-    dataset = Dataset(root_dir=dataset_root, phase=phases[phase])
-    images = [e.image for e in dataset.items]
-
-    for i, (img, e) in enumerate(zip(images, dataset.items)):
-        h, w = 404, 404
-
-        img = scipy.misc.imresize(img, (h, w))
-
-        batched_img = np.expand_dims(img, axis=0)
-        pred = model.predict(batched_img)[0, ...]
-
+    for i, (fn, pred) in enumerate(zip(data_generator.filenames,
+                                       result_gen)):
         pred_img = np.argmax(pred, axis=2)
         out = skimage.color.label2rgb(pred_img, colors=cmap[1:], bg_label=0)
 
-        skimage.io.imsave(images_folder + '%s.png' % e.name, out)
-        skimage.io.imsave(layout_folder + '%s.png' % e.name, pred_img)
+        skimage.io.imsave(images_folder + '%s.png' % fn, out)
+        skimage.io.imsave(layout_folder + '%s.png' % fn, pred_img)
 
-        print('--> #%d Done' % i, e.name)
+        print('--> #%d Done' % i, fn)
 
 
 if __name__ == '__main__':
