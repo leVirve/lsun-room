@@ -41,28 +41,30 @@ class DatasetIterator(KerasIterator):
         batch_lbl = np.zeros((current_batch_size,) + label_shape, dtype=K.floatx())
 
         for i, j in enumerate(index_array):
-            name = self.filenames[j]
-            image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
-            label_path = os.path.join(self.dataset.layout_image, '%s.png' % name)
-
-            # load image
-            img = load_img(image_path)
-            lbl = load_img(label_path, grayscale=True)
-
-            img = img.resize(self.target_size, Image.BICUBIC)
-            lbl = lbl.resize(self.target_size, Image.NEAREST)
-
-            # img to array
-            img = img_to_array(img)
-            lbl = img_to_array(lbl)
-
-            img = rgb_to_bgr(img)
-            img = remove_mean(img)
-            lbl = np.clip(lbl, 1, 5) - 1
-
-            batch_img[i], batch_lbl[i] = img, lbl
+            batch_img[i], batch_lbl[i] = self.get_file(j)
 
         return batch_img, batch_lbl
+
+    def get_file(self, j):
+        name = self.filenames[j]
+        image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
+        label_path = os.path.join(self.dataset.layout_image, '%s.png' % name)
+
+        # load image
+        img = load_img(image_path)
+        lbl = load_img(label_path, grayscale=True)
+
+        img = img.resize(self.target_size, Image.BICUBIC)
+        lbl = lbl.resize(self.target_size, Image.NEAREST)
+
+        # img to array
+        img = img_to_array(img)
+        lbl = img_to_array(lbl)
+
+        img = rgb_to_bgr(img)
+        img = remove_mean(img)
+        lbl = np.clip(lbl, 1, 5) - 1
+        return img, lbl
 
 
 def resize(img, shape):

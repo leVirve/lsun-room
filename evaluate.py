@@ -37,8 +37,9 @@ phases = {'train': Phase.TRAIN, 'val': Phase.VALIDATE, 'test': Phase.TEST}
 @click.command()
 @click.argument('weight_path', type=click.Path(exists=True))
 @click.option('--phase', type=click.Choice(['train', 'val', 'test']), default='val')  # noqa
-def main(weight_path, phase):
-    experiment_name = weight_path.split('/')[-2]
+@click.option('--output_dir', type=str, default=None)
+def main(weight_path, phase, output_dir):
+    experiment_name = output_dir or weight_path.split('/')[-2]
     images_folder = 'output_images/%s/' % experiment_name
     layout_folder = 'output_layout/%s/' % experiment_name
     os.makedirs(images_folder, exist_ok=True)
@@ -52,15 +53,12 @@ def main(weight_path, phase):
         target_size=(cfg.size, cfg.size),
         batch_size=1)
 
-    result_gen = model.predict_generator(
-        data_generator,
-        steps=data_generator.samples,
-        workers=cfg.workers)
-
     cmap = labelcolormap(5)
 
-    for i, (fn, pred) in enumerate(zip(data_generator.filenames,
-                                       result_gen)):
+    for i in range(data_generator.samples):
+        fn = data_generator.filenames[i]
+        img, lbl = data_generator.get_file(i)
+        pred = model.predict(np.expand_dims(img, 0))[0, ...]
         pred_img = np.argmax(pred, axis=2)
         out = skimage.color.label2rgb(pred_img, colors=cmap[1:], bg_label=0)
 
