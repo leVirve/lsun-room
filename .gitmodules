@@ -1,3 +1,0 @@
-[submodule "fcn_models"]
-	path = fcn_models
-	url = https://bitbucket.org/weering/room_segmodel
