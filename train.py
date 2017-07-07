@@ -2,40 +2,13 @@ import click
 import numpy as np
 
 import torch
-import torch.nn.functional as F
 from torch.autograd import Variable
 from tqdm import tqdm
 
 import config as cfg
-from fcn import FCN
-from dataset import ImageFolderDataset
 from lsun_room import Phase
-
-
-def cross_entropy2d(pred, target, weight=None, size_average=True):
-    n, c, h, w = pred.size()
-
-    log_p = F.log_softmax(pred)
-    log_p = log_p.transpose(1, 2).transpose(2, 3).contiguous().view(-1, c)
-    target = target.transpose(1, 2).transpose(2, 3).contiguous().view(-1)
-
-    loss = F.nll_loss(log_p, target, weight=weight, size_average=False)
-
-    if size_average:
-        loss /= (h * w * n)
-    return loss
-
-
-def sparse_pixelwise_accuracy(pred, target):
-    n, num_classes, h, w = pred.size()
-
-    _pred = pred.transpose(1, 2).transpose(2, 3).contiguous().view(-1, num_classes)
-    _target = target.view(-1)
-
-    _pred = _pred.data.max(1)[1]
-    correct = _pred.eq(_target).sum()
-
-    return correct / (h * w * n)
+from dataset import ImageFolderDataset
+from fcn import FCN, cross_entropy2d, sparse_pixelwise_accuracy
 
 
 @click.command()
@@ -57,22 +30,18 @@ def main(resume):
         shuffle=True)
 
     print('===> Prepare model')
-    model = FCN(num_classes=5)
-
-    print('===> Compile model')
-    model.cuda()
+    model = FCN(num_classes=5).cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     print('===> Start training')
-    losses, accuracies = np.zeros(len(train_loader)), np.zeros(len(train_loader))
+    losses = np.zeros(len(train_loader))
+    accuracies = np.zeros(len(train_loader))
     for epoch in range(1, cfg.epochs + 1):
         epoch_range = tqdm(train_loader)
         for i, (img, lbl) in enumerate(epoch_range):
             optimizer.zero_grad()
 
-            img = Variable(img).cuda()
-
-            pred = model(img)
+            pred = model(Variable(img).cuda())
             loss = cross_entropy2d(pred, Variable(lbl).cuda())
 
             loss.backward()
