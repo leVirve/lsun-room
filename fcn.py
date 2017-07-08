@@ -21,6 +21,70 @@ class LayoutNet():
         self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight)
         self.l1_criterion = nn.L1Loss()
 
+    def train(self, train_loader, validate_loader, epochs):
+        for epoch in range(1, epochs + 1):
+            self.epoch = epoch
+            self.model.train()
+            progress = tqdm.tqdm(train_loader)
+            for image, target in progress:
+                loss, accuracy = self.train_on_batch(to_var(image), to_var(target))
+                self.on_batch_end(progress, loss, accuracy)
+            self.on_epoch_end(train_loader, validate_loader)
+
+    def train_on_batch(self, image, target):
+        self.optimizer.zero_grad()
+        output = self.model(image)
+        loss = self.pixelwise_loss(output, target)
+        loss.backward()
+        self.optimizer.step()
+        accuracy = self.pixelwise_accuracy(output, target)
+        return loss, accuracy
+
+    def on_epoch_end(self, train_loader, validate_loader):
+        metrics = dict(**self.evaluate(train_loader),
+                       **self.evaluate(validate_loader, prefix='val_'))
+        for tag, value in metrics.items():
+            self.tf_summary.scalar(tag, value, self.epoch)
+        print('---> Epoch#{} loss: {loss:.4f}, accuracy={accuracy:.4f}'
+              ' val_loss: {val_loss:.4f}, val_accuracy={val_accuracy:.4f}'
+              .format(self.epoch, **metrics))
+        self.save_model()
+
+    def on_batch_end(self, progress, loss, accuracy):
+        progress.set_description('Epoch#%i' % self.epoch)
+        progress.set_postfix(
+            loss='%.04f' % loss.data[0],
+            accuracy='%.04f' % accuracy.data[0])
+
+    def evaluate(self, data_loader, prefix=''):
+        self.model.eval()
+        loss, accuracy = 0, 0
+        for i, (image, target) in enumerate(data_loader):
+            image, target = to_var(image), to_var(target)
+            output = self.model(image)
+            loss += self.pixelwise_loss(output, target).data[0]
+            accuracy += self.pixelwise_accuracy(output, target).data[0]
+            if i == 0:
+                self.summay_output(output, target, prefix)
+        return {prefix + 'loss': loss / len(data_loader),
+                prefix + 'accuracy': accuracy / len(data_loader)}
+
+    def predict(self, data_loader, name):
+        self.model.eval()
+        layout_folder = 'output/layout/%s/' % name
+        os.makedirs(layout_folder, exist_ok=True)
+        for i, (image, target) in enumerate(data_loader):
+            fn = data_loader.dataset.filenames[i]
+            image, target = to_var(image), to_var(target)
+            output = self.model(image)
+            _, output = torch.max(output, 1)
+            skimage.io.imsave(layout_folder + '%s.png' % fn, output)
+
+    def summay_output(self, output, target, prefix):
+        _, output = torch.max(output, 1)
+        self.tf_summary.image(prefix + 'output', output.data, self.epoch)
+        self.tf_summary.image(prefix + 'target', target.data, self.epoch)
+
     def pixelwise_loss(self, pred, target):
         log_pred = F.log_softmax(pred)
         xent_loss = self.cross_entropy_criterion(log_pred, target)
@@ -33,73 +97,20 @@ class LayoutNet():
 
         return xent_loss + cfg.λ * l1_loss
 
-    def pixelwise_accuracy(self, pred, target):
-        _, pred = torch.max(pred, 1)
-        return (pred == target).float().mean()
-
-    def train(self, train_loader, validate_loader, epochs):
-        for epoch in range(1, epochs + 1):
-            self.epoch = epoch
-            self.model.train()
-            progress = tqdm.tqdm(train_loader)
-
-            for img, lbl in progress:
-                img, lbl = Variable(img).cuda(), Variable(lbl).cuda()
-
-                self.optimizer.zero_grad()
-                output = self.model(img)
-                loss = self.pixelwise_loss(output, lbl)
-                loss.backward()
-                accuracy = self.pixelwise_accuracy(output, lbl)
-                self.optimizer.step()
-
-                self.on_batch_end(progress, loss, accuracy)
-
-            self.on_epoch_end(train_loader, validate_loader)
-
-    def on_epoch_end(self, train_loader, validate_loader):
-        metrics = dict(**self.evaluate(train_loader),
-                       **self.evaluate(validate_loader, prefix='val_'))
-        for tag, value in metrics.items():
-            self.tf_summary.scalar(tag, value, self.epoch)
-        print('---> Epoch#{} loss: {loss:.4f}, accuracy={accuracy:.4f}'
-              ' val_loss: {val_loss:.4f}, val_accuracy={val_accuracy:.4f}'
-              .format(self.epoch, **metrics))
-
-    def on_batch_end(self, progress, loss, accuracy):
-        progress.set_description('Epoch#%i' % self.epoch)
-        progress.set_postfix(
-            loss='%.04f' % loss.data[0],
-            accuracy='%.04f' % accuracy.data[0])
-
-    def evaluate(self, data_loader, prefix=''):
-        self.model.eval()
-        loss, accuracy = 0, 0
-        for i, (image, target) in enumerate(data_loader):
-            image, target = Variable(image).cuda(), Variable(target).cuda()
-            output = self.model(image)
-            loss += self.pixelwise_loss(output, target).data[0]
-            accuracy += self.pixelwise_accuracy(output, target).data[0]
-            if i == 0:
-                self.summay_output(output, target, prefix)
-        return {prefix + 'loss': loss / len(data_loader),
-                prefix + 'accuracy': accuracy / len(data_loader)}
-
-    def summay_output(self, output, target, prefix):
+    def pixelwise_accuracy(self, output, target):
         _, output = torch.max(output, 1)
-        self.tf_summary.image(prefix + 'output', output.data, self.epoch)
-        self.tf_summary.image(prefix + 'target', target.data, self.epoch)
+        return (output == target).float().mean()
 
-    def predict(self, data_loader, name):
-        self.model.eval()
-        layout_folder = 'output_layout/%s/' % name
-        os.makedirs(layout_folder, exist_ok=True)
-        for i, (image, target) in enumerate(data_loader):
-            fn = data_loader.dataset.filenames[i]
-            image, target = Variable(image).cuda(), Variable(target).cuda()
-            output = self.model(image)
-            _, output = torch.max(output, 1)
-            skimage.io.imsave(layout_folder + '%s.png' % fn, output)
+    def load_model(self, path):
+        self.model = torch.load(path)
+
+    def save_model(self):
+        os.makedirs('output/weight', exist_ok=True)
+        torch.save(self.model.state_dict(), 'output/weight/%d.pth' % self.epoch)
+
+
+def to_var(tensor):
+    return Variable(tensor).cuda()
 
 
 class FCN(nn.Module):
