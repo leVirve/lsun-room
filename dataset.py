@@ -37,7 +37,7 @@ class ImageFolderDataset(dset.ImageFolder):
 
         img = self.transform(img)
         lbl = np.clip(lbl, 1, 5) - 1
-        lbl = torch.from_numpy(np.expand_dims(lbl, axis=0)).long()
+        lbl = torch.from_numpy(lbl).long()
 
         return img, lbl
 

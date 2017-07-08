@@ -1,37 +1,59 @@
-import torch.nn as nn
-import torch.nn.init as weight_init
-import torch.nn.functional as F
+import tqdm
+import torch
 import torchvision
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.nn.init as weight_init
+from torch.autograd import Variable
+
+from logger import Logger
 
 
-def channel_first_to_last(tensor):
-    return tensor.transpose(1, 2).transpose(2, 3).contiguous()
+class LayoutNet():
 
+    def __init__(self, weight=None):
+        self.log = Logger('./logs')
+        self.model = FCN(num_classes=5).cuda()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+        self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight)
 
-def cross_entropy2d(pred, target, weight=None, size_average=True):
-    n, num_classes, h, w = pred.size()
+    def pixelwise_loss(self, pred, target):
+        log_pred = F.log_softmax(pred)
+        xent_loss = self.cross_entropy_criterion(log_pred, target)
+        return xent_loss
 
-    log_p = F.log_softmax(pred)
+    def pixelwise_accuracy(self, pred, target):
+        _, pred = torch.max(pred, 1)
+        return (pred == target).float().mean()
 
-    log_p = channel_first_to_last(log_p).view(-1, num_classes)
-    target = channel_first_to_last(target).view(-1)
-    loss = F.nll_loss(log_p, target, weight=weight, size_average=False)
+    def train(self, train_data, epochs):
+        for epoch in range(1, epochs + 1):
+            progress = tqdm.tqdm(train_data)
 
-    if size_average:
-        loss /= (h * w * n)
-    return loss
+            for img, lbl in progress:
+                img, lbl = Variable(img).cuda(), Variable(lbl).cuda()
 
+                self.optimizer.zero_grad()
+                pred = self.model(img)
+                loss = self.pixelwise_loss(pred, lbl)
+                loss.backward()
+                self.optimizer.step()
 
-def sparse_pixelwise_accuracy(pred, target):
-    n, num_classes, h, w = pred.size()
+                accuracy = self.pixelwise_accuracy(pred, lbl)
 
-    pred = channel_first_to_last(pred).view(-1, num_classes)
-    target = target.view(-1)
+                loss = loss.data[0]
+                accuracy = accuracy.data[0]
 
-    pred = pred.data.max(1)[1]
-    accuracy = pred.eq(target).sum() / (h * w * n)
+                progress.set_description('Epoch#%i' % epoch)
+                progress.set_postfix(
+                    loss='%.02f' % loss,
+                    accuracy='%.02f' % accuracy)
 
-    return accuracy
+            print('===> Epoch#{} val_loss: {:.4f}, val_accuracy={:.2f}'.format(
+                  epoch, 0, 0))
+
+    def evaluate(self):
+        pass
 
 
 class FCN(nn.Module):
