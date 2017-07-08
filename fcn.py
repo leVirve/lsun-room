@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.nn.init as weight_init
 from torch.autograd import Variable
 
+import config as cfg
 from logger import Logger
 
 
@@ -16,18 +17,30 @@ class LayoutNet():
         self.model = FCN(num_classes=5).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
         self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight)
+        self.l1_criterion = nn.L1Loss()
 
     def pixelwise_loss(self, pred, target):
         log_pred = F.log_softmax(pred)
         xent_loss = self.cross_entropy_criterion(log_pred, target)
-        return xent_loss
 
-    def pixelwise_accuracy(self, pred, target):
+        onehot_target = (
+            torch.FloatTensor(pred.size())
+            .zero_().cuda()
+            .scatter_(1, target.data.unsqueeze(1), 1))
+        l1_loss = self.l1_criterion(pred, Variable(onehot_target))
+
+        return xent_loss + cfg.λ * l1_loss
+
+    def pixelwise_accuracy(self, pred, target, tf_write=False):
         _, pred = torch.max(pred, 1)
+        if tf_write:
+            self.tf_summary.image('pred', pred.data, self.epoch)
+            self.tf_summary.image('target', target.data, self.epoch)
         return (pred == target).float().mean()
 
     def train(self, train_loader, validate_loader, epochs):
         for epoch in range(1, epochs + 1):
+            self.epoch = epoch
             self.model.train()
             progress = tqdm.tqdm(train_loader)
 
@@ -53,17 +66,17 @@ class LayoutNet():
             self.tf_summary.scalar('accuracy', acc, epoch)
             self.tf_summary.scalar('val_loss', val_loss, epoch)
             self.tf_summary.scalar('val_accuracy', val_acc, epoch)
-            print('---> Epoch#{} val_loss: {:.4f}, val_accuracy={:.2f}'.format(
+            print('---> Epoch#{} val_loss: {:.4f}, val_accuracy={:.4f}'.format(
                   epoch, val_loss, val_acc))
 
     def evaluate(self, data_loader):
         self.model.eval()
         loss, accuracy = 0, 0
-        for img, lbl in data_loader:
+        for i, (img, lbl) in enumerate(data_loader):
             img, lbl = Variable(img).cuda(), Variable(lbl).cuda()
             pred = self.model(img)
             loss += self.pixelwise_loss(pred, lbl).data[0]
-            accuracy += self.pixelwise_accuracy(pred, lbl).data[0]
+            accuracy += self.pixelwise_accuracy(pred, lbl, tf_write=i == 0).data[0]
         return loss / len(data_loader), accuracy / len(data_loader)
 
     def predict(self):
@@ -139,7 +152,6 @@ class FCN(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.ConvTranspose2d):
-                assert m.kernel_size[0] == m.kernel_size[1]
                 m.weight.data = weight_init.kaiming_normal(m.weight.data)
         for a, b in zip(vgg16.features, self.features):
             if (isinstance(a, nn.Conv2d) and isinstance(b, nn.Conv2d)):

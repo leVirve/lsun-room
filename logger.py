@@ -26,6 +26,7 @@ class Logger(object):
         for i, img in enumerate(images):
             # Write the image to a string
             s = BytesIO()
+            img = img.squeeze().cpu().numpy()
             scipy.misc.toimage(img).save(s, format="png")
 
             # Create an Image object
