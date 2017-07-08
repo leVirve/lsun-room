@@ -5,6 +5,6 @@ dataset_root = '../data'
 image_size = (404, 404)
 workers = 8
 epochs = 50
-batch_size = 5
+batch_size = 4
 
 λ = 0.1
