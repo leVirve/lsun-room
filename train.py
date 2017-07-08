@@ -22,12 +22,24 @@ def main(resume):
         num_workers=cfg.workers,
         pin_memory=True,
         shuffle=True)
+    validate_loader = torch.utils.data.DataLoader(
+        dataset=ImageFolderDataset(
+                    root=cfg.dataset_root,
+                    target_size=(cfg.size, cfg.size),
+                    phase=Phase.VALIDATE),
+        batch_size=cfg.batch_size,
+        num_workers=cfg.workers,
+        pin_memory=True,
+        shuffle=True)
 
     print('===> Prepare model')
     net = LayoutNet()
 
     print('===> Start training')
-    net.train(train_loader, epochs=cfg.epochs)
+    net.train(
+        train_loader=train_loader,
+        validate_loader=validate_loader,
+        epochs=cfg.epochs)
 
 
 if __name__ == '__main__':

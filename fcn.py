@@ -12,7 +12,7 @@ from logger import Logger
 class LayoutNet():
 
     def __init__(self, weight=None):
-        self.log = Logger('./logs')
+        self.tf_summary = Logger('./logs', name='pytorch')
         self.model = FCN(num_classes=5).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
         self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight)
@@ -26,9 +26,10 @@ class LayoutNet():
         _, pred = torch.max(pred, 1)
         return (pred == target).float().mean()
 
-    def train(self, train_data, epochs):
+    def train(self, train_loader, validate_loader, epochs):
         for epoch in range(1, epochs + 1):
-            progress = tqdm.tqdm(train_data)
+            self.model.train()
+            progress = tqdm.tqdm(train_loader)
 
             for img, lbl in progress:
                 img, lbl = Variable(img).cuda(), Variable(lbl).cuda()
@@ -41,18 +42,31 @@ class LayoutNet():
 
                 accuracy = self.pixelwise_accuracy(pred, lbl)
 
-                loss = loss.data[0]
-                accuracy = accuracy.data[0]
-
                 progress.set_description('Epoch#%i' % epoch)
                 progress.set_postfix(
-                    loss='%.02f' % loss,
-                    accuracy='%.02f' % accuracy)
+                    loss='%.04f' % loss.data[0],
+                    accuracy='%.04f' % accuracy.data[0])
 
-            print('===> Epoch#{} val_loss: {:.4f}, val_accuracy={:.2f}'.format(
-                  epoch, 0, 0))
+            loss, acc = self.evaluate(validate_loader)
+            val_loss, val_acc = self.evaluate(validate_loader)
+            self.tf_summary.scalar('loss', loss, epoch)
+            self.tf_summary.scalar('accuracy', acc, epoch)
+            self.tf_summary.scalar('val_loss', val_loss, epoch)
+            self.tf_summary.scalar('val_accuracy', val_acc, epoch)
+            print('---> Epoch#{} val_loss: {:.4f}, val_accuracy={:.2f}'.format(
+                  epoch, val_loss, val_acc))
 
-    def evaluate(self):
+    def evaluate(self, data_loader):
+        self.model.eval()
+        loss, accuracy = 0, 0
+        for img, lbl in data_loader:
+            img, lbl = Variable(img).cuda(), Variable(lbl).cuda()
+            pred = self.model(img)
+            loss += self.pixelwise_loss(pred, lbl).data[0]
+            accuracy += self.pixelwise_accuracy(pred, lbl).data[0]
+        return loss / len(data_loader), accuracy / len(data_loader)
+
+    def predict(self):
         pass
 
 

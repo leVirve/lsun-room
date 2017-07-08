@@ -5,6 +5,6 @@ dataset_root = '../data'
 size = 404
 workers = 4
 epochs = 50
-batch_size = 8
+batch_size = 4
 
 λ = 0.1
