@@ -3,8 +3,7 @@ import click
 import torch
 
 import config as cfg
-from lsun_room import Phase
-from dataset import ImageFolderDataset
+from lsun_room import Phase, ImageFolderDataset
 from fcn import LayoutNet
 
 
