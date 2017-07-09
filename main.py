@@ -3,7 +3,7 @@ import click
 import torch
 
 from lsun_room import Phase, ImageFolderDataset
-from fcn import LayoutNet
+from fcn import LayoutNet, LayoutLoss
 
 
 @click.command()
@@ -29,7 +29,7 @@ def main(name, dataset_root,
         batch_size=batch_size, **loader_args)
 
     print('===> Prepare model')
-    net = LayoutNet(name, λ=l1_weight)
+    net = LayoutNet(name, criterion=LayoutLoss(λ=l1_weight))
 
     print('===> Start training')
     net.train(

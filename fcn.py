@@ -13,14 +13,13 @@ from tools.logger import Logger
 
 class LayoutNet():
 
-    def __init__(self, name, λ=0.1, weight=None):
+    def __init__(self, name, criterion):
         self.name = name
-        self.λ = λ
-        self.tf_summary = Logger('./logs', name=name)
         self.model = nn.DataParallel(FCN(num_classes=5)).cuda()
+        self.criterion = criterion
+        self.accuracy = LayoutAccuracy()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
-        self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
-        self.l1_criterion = nn.L1Loss().cuda()
+        self.tf_summary = Logger('./logs', name=name)
 
     def train(self, train_loader, validate_loader, epochs):
         for epoch in range(1, epochs + 1):
@@ -28,22 +27,23 @@ class LayoutNet():
             self.model.train()
             progress = tqdm.tqdm(train_loader)
             for image, target in progress:
-                loss, accuracy = self.train_on_batch(to_var(image), to_var(target))
-                self.on_batch_end(progress, loss, accuracy)
+                loss, acc = self.train_on_batch(to_var(image), to_var(target))
+                self.on_batch_end(progress, loss, acc)
             self.on_epoch_end(train_loader, validate_loader)
 
     def train_on_batch(self, image, target):
         self.optimizer.zero_grad()
         output = self.model(image)
-        loss = self.pixelwise_loss(output, target)
+        loss = self.criterion(output, target)
         loss.backward()
         self.optimizer.step()
-        accuracy = self.pixelwise_accuracy(output, target)
-        return loss, accuracy
+        acc = self.accuracy(output, target)
+        return loss, acc
 
     def on_epoch_end(self, train_loader, validate_loader):
-        metrics = dict(**self.evaluate(train_loader),
-                       **self.evaluate(validate_loader, prefix='val_'))
+        metrics = dict(
+            **self.evaluate(train_loader),
+            **self.evaluate(validate_loader, prefix='val_'))
         for tag, value in metrics.items():
             self.tf_summary.scalar(tag, value, self.epoch)
         print('---> Epoch#{} loss: {loss:.4f}, accuracy={accuracy:.4f}'
@@ -54,21 +54,20 @@ class LayoutNet():
     def on_batch_end(self, progress, loss, accuracy):
         progress.set_description('Epoch#%i' % self.epoch)
         progress.set_postfix(
-            loss='%.04f' % loss.data[0],
-            accuracy='%.04f' % accuracy.data[0])
+            loss='%.04f' % loss.data[0], accuracy='%.04f' % accuracy.data[0])
 
     def evaluate(self, data_loader, prefix=''):
         self.model.eval()
-        loss, accuracy = 0, 0
+        loss, acc = 0, 0
         for i, (image, target) in enumerate(data_loader):
             image, target = to_var(image), to_var(target)
             output = self.model(image)
-            loss += self.pixelwise_loss(output, target).data[0]
-            accuracy += self.pixelwise_accuracy(output, target).data[0]
+            loss += self.criterion(output, target).data[0]
+            acc += self.accuracy(output, target).data[0]
             if i == 0:
                 self.summay_output(output, target, prefix)
         return {prefix + 'loss': loss / len(data_loader),
-                prefix + 'accuracy': accuracy / len(data_loader)}
+                prefix + 'accuracy': acc / len(data_loader)}
 
     def predict(self, data_loader, name):
         self.model.eval()
@@ -86,22 +85,6 @@ class LayoutNet():
         self.tf_summary.image(prefix + 'output', output.data, self.epoch)
         self.tf_summary.image(prefix + 'target', target.data, self.epoch)
 
-    def pixelwise_loss(self, pred, target):
-        log_pred = F.log_softmax(pred)
-        xent_loss = self.cross_entropy_criterion(log_pred, target)
-
-        onehot_target = (
-            torch.FloatTensor(pred.size())
-            .zero_().cuda()
-            .scatter_(1, target.data.unsqueeze(1), 1))
-        l1_loss = self.l1_criterion(pred, Variable(onehot_target))
-
-        return xent_loss + self.λ * l1_loss
-
-    def pixelwise_accuracy(self, output, target):
-        _, output = torch.max(output, 1)
-        return (output == target).float().mean()
-
     def load_model(self, path):
         self.model = torch.load(path)
 
@@ -113,6 +96,38 @@ class LayoutNet():
 
 def to_var(tensor):
     return Variable(tensor).cuda()
+
+
+class LayoutAccuracy():
+
+    def __call__(self, output, target):
+        return self.pixelwise_accuracy(output, target)
+
+    def pixelwise_accuracy(self, output, target):
+        _, output = torch.max(output, 1)
+        return (output == target).float().mean()
+
+
+class LayoutLoss():
+
+    def __init__(self, λ=0.1, weight=None):
+        self.λ = λ
+        self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
+        self.l1_criterion = nn.L1Loss().cuda()
+
+    def __call__(self, pred, target):
+        return self.pixelwise_loss(pred, target)
+
+    def pixelwise_loss(self, pred, target):
+        log_pred = F.log_softmax(pred)
+        xent_loss = self.cross_entropy_criterion(log_pred, target)
+
+        onehot_target = (
+            torch.FloatTensor(pred.size())
+            .zero_().cuda()
+            .scatter_(1, target.data.unsqueeze(1), 1))
+        l1_loss = self.l1_criterion(pred, Variable(onehot_target))
+        return xent_loss + self.λ * l1_loss
 
 
 class FCN(nn.Module):
