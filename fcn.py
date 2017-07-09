@@ -3,6 +3,7 @@ import skimage
 import tqdm
 import torch
 import torchvision
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as weight_init
@@ -23,64 +24,65 @@ class LayoutNet():
 
     def train(self, train_loader, validate_loader, epochs):
         for epoch in range(1, epochs + 1):
-            self.epoch = epoch
+
             self.model.train()
+            self.epoch = epoch
+            history = EpochHistory(length=len(train_loader))
             progress = tqdm.tqdm(train_loader)
+
             for image, target in progress:
-                loss, acc = self.train_on_batch(to_var(image), to_var(target))
-                self.on_batch_end(progress, loss, acc)
-            self.on_epoch_end(train_loader, validate_loader)
+                self.optimizer.zero_grad()
+                loss, acc = self.forward(to_var(image), to_var(target))
+                loss.backward()
+                self.optimizer.step()
 
-    def train_on_batch(self, image, target):
-        self.optimizer.zero_grad()
-        output = self.model(image)
-        loss = self.criterion(output, target)
-        loss.backward()
-        self.optimizer.step()
-        acc = self.accuracy(output, target)
-        return loss, acc
+                history.add(loss, acc)
+                progress.set_description('Epoch#%i' % epoch)
+                progress.set_postfix(
+                    loss='%.04f' % loss.data[0],
+                    accuracy='%.04f' % acc.data[0])
 
-    def on_epoch_end(self, train_loader, validate_loader):
-        metrics = dict(
-            **self.evaluate(train_loader),
-            **self.evaluate(validate_loader, prefix='val_'))
-        for tag, value in metrics.items():
-            self.tf_summary.scalar(tag, value, self.epoch)
-        print('---> Epoch#{} loss: {loss:.4f}, accuracy={accuracy:.4f}'
-              ' val_loss: {val_loss:.4f}, val_accuracy={val_accuracy:.4f}'
-              .format(self.epoch, **metrics))
-        self.save_model()
+            metrics = dict(**history.metric(),
+                           **self.evaluate(validate_loader, prefix='val_'))
+            print('---> Epoch#{} loss: {loss:.4f}, accuracy={accuracy:.4f}'
+                  ' val_loss: {val_loss:.4f}, val_accuracy={val_accuracy:.4f}'
+                  .format(self.epoch, **metrics))
 
-    def on_batch_end(self, progress, loss, accuracy):
-        progress.set_description('Epoch#%i' % self.epoch)
-        progress.set_postfix(
-            loss='%.04f' % loss.data[0], accuracy='%.04f' % accuracy.data[0])
+            self.summary_scalar(metrics)
+            self.save_model()
 
     def evaluate(self, data_loader, prefix=''):
+        history = EpochHistory(length=len(data_loader))
         self.model.eval()
-        loss, acc = 0, 0
         for i, (image, target) in enumerate(data_loader):
-            image, target = to_var(image), to_var(target)
-            output = self.model(image)
-            loss += self.criterion(output, target).data[0]
-            acc += self.accuracy(output, target).data[0]
+            loss, acc, output = self.forward(
+                to_var(image), to_var(target), result=True)
+            history.add(loss, acc)
             if i == 0:
-                self.summay_output(output, target, prefix)
-        return {prefix + 'loss': loss / len(data_loader),
-                prefix + 'accuracy': acc / len(data_loader)}
+                self.summary_image(output, to_var(target), prefix)
+        return history.metric(prefix=prefix)
 
     def predict(self, data_loader, name):
         self.model.eval()
         layout_folder = 'output/layout/%s/' % name
         os.makedirs(layout_folder, exist_ok=True)
-        for i, (image, target) in enumerate(data_loader):
-            fn = data_loader.dataset.filenames[i]
-            image, target = to_var(image), to_var(target)
-            output = self.model(image)
+        for i, (image, _) in enumerate(data_loader):
+            output = self.model(to_var(image))
             _, output = torch.max(output, 1)
+            fn = data_loader.dataset.filenames[i]
             skimage.io.imsave(layout_folder + '%s.png' % fn, output)
 
-    def summay_output(self, output, target, prefix):
+    def forward(self, image, target, result=False):
+        output = self.model(image)
+        loss = self.criterion(output, target)
+        acc = self.accuracy(output, target)
+        return (loss, acc, output) if result else (loss, acc)
+
+    def summary_scalar(self, metrics):
+        for tag, value in metrics.items():
+            self.tf_summary.scalar(tag, value, self.epoch)
+
+    def summary_image(self, output, target, prefix):
         _, output = torch.max(output, 1)
         self.tf_summary.image(prefix + 'output', output.data, self.epoch)
         self.tf_summary.image(prefix + 'target', target.data, self.epoch)
@@ -96,6 +98,28 @@ class LayoutNet():
 
 def to_var(tensor):
     return Variable(tensor).cuda()
+
+
+class EpochHistory():
+
+    def __init__(self, length):
+        self.count = 0
+        self.len = length
+        self.losses = np.zeros(self.len)
+        self.accuracies = np.zeros(self.len)
+
+    def add(self, loss, acc):
+        self.losses[self.count] = loss.data[0]
+        self.accuracies[self.count] = acc.data[0]
+        self.count += 1
+
+    def mean(self):
+        return self.losses.mean(), self.accuracies.mean()
+
+    def metric(self, prefix=''):
+        loss, accuracy = self.mean()
+        return {prefix + 'loss': loss,
+                prefix + 'accuracy': accuracy}
 
 
 class LayoutAccuracy():
