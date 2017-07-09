@@ -11,6 +11,18 @@
 
   ```bash
   python main.py
+
+  Usage: main.py [OPTIONS]
+
+  Options:
+    --name TEXT
+    --dataset_root TEXT
+    --image_size <INTEGER INTEGER>
+    --epochs INTEGER
+    --batch_size INTEGER
+    --workers INTEGER
+    --l1_weight FLOAT
+    --resume PATH
   ```
 
 - Re-label
