@@ -16,7 +16,7 @@ class LayoutNet():
 
     def __init__(self, weight=None):
         self.tf_summary = Logger('./logs', name=cfg.name)
-        self.model = FCN(num_classes=5).cuda()
+        self.model = nn.DataParallel(FCN(num_classes=5)).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
         self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
         self.l1_criterion = nn.L1Loss().cuda()
