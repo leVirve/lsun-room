@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch.nn.init as weight_init
 from torch.autograd import Variable
 
-from logger import Logger
+from tools.logger import Logger
 
 
 class LayoutNet():
