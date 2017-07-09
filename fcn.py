@@ -8,14 +8,15 @@ import torch.nn.functional as F
 import torch.nn.init as weight_init
 from torch.autograd import Variable
 
-import config as cfg
 from logger import Logger
 
 
 class LayoutNet():
 
-    def __init__(self, weight=None):
-        self.tf_summary = Logger('./logs', name=cfg.name)
+    def __init__(self, name, λ=0.1, weight=None):
+        self.name = name
+        self.λ = λ
+        self.tf_summary = Logger('./logs', name=name)
         self.model = nn.DataParallel(FCN(num_classes=5)).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
         self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
@@ -95,7 +96,7 @@ class LayoutNet():
             .scatter_(1, target.data.unsqueeze(1), 1))
         l1_loss = self.l1_criterion(pred, Variable(onehot_target))
 
-        return xent_loss + cfg.λ * l1_loss
+        return xent_loss + self.λ * l1_loss
 
     def pixelwise_accuracy(self, output, target):
         _, output = torch.max(output, 1)
@@ -105,7 +106,7 @@ class LayoutNet():
         self.model = torch.load(path)
 
     def save_model(self):
-        folder = 'output/weight/%s' % cfg.name
+        folder = 'output/weight/%s' % self.name
         os.makedirs(folder, exist_ok=True)
         torch.save(self.model.state_dict(), folder + '/%d.pth' % self.epoch)
 
