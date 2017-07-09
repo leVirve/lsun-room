@@ -15,11 +15,11 @@ from logger import Logger
 class LayoutNet():
 
     def __init__(self, weight=None):
-        self.tf_summary = Logger('./logs', name='pytorch')
+        self.tf_summary = Logger('./logs', name=cfg.name)
         self.model = FCN(num_classes=5).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
-        self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight)
-        self.l1_criterion = nn.L1Loss()
+        self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
+        self.l1_criterion = nn.L1Loss().cuda()
 
     def train(self, train_loader, validate_loader, epochs):
         for epoch in range(1, epochs + 1):
@@ -105,8 +105,9 @@ class LayoutNet():
         self.model = torch.load(path)
 
     def save_model(self):
-        os.makedirs('output/weight', exist_ok=True)
-        torch.save(self.model.state_dict(), 'output/weight/%d.pth' % self.epoch)
+        folder = 'output/weight/%s' % cfg.name
+        os.makedirs(folder, exist_ok=True)
+        torch.save(self.model.state_dict(), folder + '/%d.pth' % self.epoch)
 
 
 def to_var(tensor):

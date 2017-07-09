@@ -1,4 +1,4 @@
-experiment_name = 'fcn32s_adam_404(+L1)'
+name = 'fcn32s_adam_404(+L1)'
 initial_weight_path = None  # '../model_June13_sgd_60kitr.h5'
 
 dataset_root = '../data'
