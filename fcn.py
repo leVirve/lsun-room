@@ -1,4 +1,5 @@
 import os
+import cv2
 import skimage
 import tqdm
 import torch
@@ -85,7 +86,7 @@ class LayoutNet():
 
     def summary_scalar(self, metrics):
         for tag, value in metrics.items():
-            self.tf_summary.scalar(tag, value, self.epoch)
+            self.tf_summary.scalar(tag, value, self.epoch - 1)
 
     def summary_image(self, output, target, prefix):
 
@@ -170,11 +171,16 @@ class LayoutLoss():
 
     def edge_loss(self, pred, edge_map):
         _, pred = torch.max(pred, 1)
-        pred = pred.squeeze()
-        mask = pred > 0
+        pred = pred.float().squeeze(1)
+
+        imgs = pred.data.cpu().numpy()
+        for i, img in enumerate(imgs):
+            pred[i].data = torch.from_numpy(cv2.Laplacian(img, cv2.CV_32F))
+
+        mask = pred != 0
         pred[mask] = 1
-        edge_map = Variable(edge_map.cuda())
-        return self.edge_criterion(pred[mask].float(), edge_map[mask].float())
+        edge_map = Variable(edge_map.float().cuda())
+        return self.edge_criterion(pred[mask], edge_map[mask].float())
 
 
 class FCN(nn.Module):
