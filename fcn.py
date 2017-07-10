@@ -30,9 +30,9 @@ class LayoutNet():
             history = EpochHistory(length=len(train_loader))
             progress = tqdm.tqdm(train_loader)
 
-            for image, target in progress:
+            for image, target, edge_map in progress:
                 self.optimizer.zero_grad()
-                loss, acc = self.forward(image, target)
+                loss, acc = self.forward(image, target, edge_map)
                 loss.backward()
                 self.optimizer.step()
 
@@ -55,8 +55,8 @@ class LayoutNet():
     def evaluate(self, data_loader, prefix=''):
         self.model.eval()
         history = EpochHistory(length=len(data_loader))
-        for i, (image, target) in enumerate(data_loader):
-            loss, acc, output = self.forward(image, target, is_eval=True)
+        for i, (image, target, edge_map) in enumerate(data_loader):
+            loss, acc, output = self.forward(image, target, edge_map, is_eval=True)
             history.add(loss, acc)
             if i == 0:
                 self.summary_image(output.data, target, prefix)
@@ -66,20 +66,20 @@ class LayoutNet():
         self.model.eval()
         layout_folder = 'output/layout/%s/' % name
         os.makedirs(layout_folder, exist_ok=True)
-        for i, (image, _) in enumerate(data_loader):
+        for i, (image, _, _) in enumerate(data_loader):
             output = self.model(Variable(image, volatile=True).cuda())
             _, output = torch.max(output, 1)
             fn = data_loader.dataset.filenames[i]
             skimage.io.imsave(layout_folder + '%s.png' % fn, output)
 
-    def forward(self, image, target, is_eval=False):
+    def forward(self, image, target, edge_map, is_eval=False):
 
         def to_var(t):
             return Variable(t, volatile=is_eval).cuda()
 
         image, target = to_var(image), to_var(target)
         output = self.model(image)
-        loss = self.criterion(output, target)
+        loss = self.criterion(output, target, edge_map)
         acc = self.accuracy(output, target)
         return (loss, acc, output) if is_eval else (loss, acc)
 
@@ -139,24 +139,42 @@ class LayoutAccuracy():
 
 class LayoutLoss():
 
-    def __init__(self, λ=0.1, weight=None):
-        self.λ = λ
+    def __init__(self, l1_λ=0.1, edge_λ=0.1, weight=None):
+        self.l1_λ = l1_λ
+        self.edge_λ = edge_λ
         self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
         self.l1_criterion = nn.L1Loss().cuda()
+        self.edge_criterion = nn.BCELoss().cuda()
 
-    def __call__(self, pred, target):
-        return self.pixelwise_loss(pred, target)
+    def __call__(self, pred, target, edge_map):
+        pixelwise_loss = self.pixelwise_loss(pred, target)
+
+        if not self.edge_λ:
+            return self.pixelwise_loss(pred, target)
+
+        return pixelwise_loss + self.edge_λ * self.edge_loss(pred, edge_map)
 
     def pixelwise_loss(self, pred, target):
         log_pred = F.log_softmax(pred)
         xent_loss = self.cross_entropy_criterion(log_pred, target)
+
+        if not self.l1_λ:
+            return xent_loss
 
         onehot_target = (
             torch.FloatTensor(pred.size())
             .zero_().cuda()
             .scatter_(1, target.data.unsqueeze(1), 1))
         l1_loss = self.l1_criterion(pred, Variable(onehot_target))
-        return xent_loss + self.λ * l1_loss
+        return xent_loss + self.l1_λ * l1_loss
+
+    def edge_loss(self, pred, edge_map):
+        _, pred = torch.max(pred, 1)
+        pred = pred.squeeze()
+        mask = pred > 0
+        pred[mask] = 1
+        edge_map = Variable(edge_map.cuda())
+        return self.edge_criterion(pred[mask].float(), edge_map[mask].float())
 
 
 class FCN(nn.Module):

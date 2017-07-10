@@ -11,7 +11,7 @@ def timeit(f):
         s = time.time()
         result = f(*args, **kw)
         e = time.time()
-        print('--> %r, cost %2.4f sec' % (f.__name__, e - s))
+        print('--> %s(), cost %2.4f sec' % (f.__name__, e - s))
         return result
 
     return wrap

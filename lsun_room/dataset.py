@@ -7,6 +7,7 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
 from lsun_room.data import DataItems
+from lsun_room.edge import mapping_func
 
 
 class ImageFolderDataset(dset.ImageFolder):
@@ -23,9 +24,9 @@ class ImageFolderDataset(dset.ImageFolder):
         self.filenames = [e.name for e in self.dataset.items]
 
     def __getitem__(self, index):
-        return self.load(self.filenames[index])
+        return self.load(self.filenames[index], index)
 
-    def load(self, name):
+    def load(self, name, index):
         image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
         label_path = os.path.join(self.dataset.layout_image, '%s.png' % name)
 
@@ -39,7 +40,14 @@ class ImageFolderDataset(dset.ImageFolder):
         lbl = np.clip(lbl, 1, 5) - 1
         lbl = torch.from_numpy(lbl).long()
 
-        return img, lbl
+        edge = torch.from_numpy(self.load_edge_map(index) / 255).long()
+
+        return img, lbl, edge
+
+    def load_edge_map(self, index):
+        e = self.dataset.items[index]
+        edge_map = mapping_func(e.type)
+        return edge_map(e, image_size=self.target_size, width=2)
 
     def __len__(self):
         return len(self.filenames)

@@ -16,9 +16,11 @@ torch.backends.cudnn.benchmark = True
 @click.option('--batch_size', default=4, type=int)
 @click.option('--workers', default=8, type=int)
 @click.option('--l1_weight', default=0.1, type=float)
+@click.option('--edge_weight', default=0.1, type=float)
 @click.option('--resume', type=click.Path(exists=True))
 def main(name, dataset_root,
-         image_size, epochs, batch_size, workers, l1_weight, resume):
+         image_size, epochs, batch_size, workers,
+         l1_weight, edge_weight, resume):
 
     print('===> Prepare data loader')
     dataset_args = {'root': dataset_root, 'target_size': image_size}
@@ -31,7 +33,9 @@ def main(name, dataset_root,
         batch_size=batch_size, **loader_args)
 
     print('===> Prepare model')
-    net = LayoutNet(name, criterion=LayoutLoss(λ=l1_weight))
+    net = LayoutNet(
+        name,
+        criterion=LayoutLoss(l1_λ=l1_weight, edge_λ=edge_weight))
 
     print('===> Start training')
     net.train(
