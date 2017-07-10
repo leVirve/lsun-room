@@ -1,9 +1,11 @@
 import click
-
 import torch
 
-from lsun_room import Phase, ImageFolderDataset
+from lsun_room import Phase
+from lsun_room.dataset import ImageFolderDataset
 from fcn import LayoutNet, LayoutLoss
+
+torch.backends.cudnn.benchmark = True
 
 
 @click.command()
