@@ -33,11 +33,11 @@ class LayoutNet():
 
             for image, target, edge_map in progress:
                 self.optimizer.zero_grad()
-                loss, acc = self.forward(image, target, edge_map)
+                loss, loss_term, acc = self.forward(image, target, edge_map)
                 loss.backward()
                 self.optimizer.step()
 
-                history.add(loss, acc)
+                history.add(loss, loss_term, acc)
                 progress.set_description('Epoch#%i' % epoch)
                 progress.set_postfix(
                     loss='%.04f' % loss.data[0],
@@ -57,8 +57,8 @@ class LayoutNet():
         self.model.eval()
         history = EpochHistory(length=len(data_loader))
         for i, (image, target, edge_map) in enumerate(data_loader):
-            loss, acc, output = self.forward(image, target, edge_map, is_eval=True)
-            history.add(loss, acc)
+            loss, loss_term, acc, output = self.forward(image, target, edge_map, is_eval=True)
+            history.add(loss, loss_term, acc)
             if i == 0:
                 self.summary_image(output.data, target, prefix)
         return history.metric(prefix=prefix)
@@ -80,9 +80,9 @@ class LayoutNet():
 
         image, target = to_var(image), to_var(target)
         output = self.model(image)
-        loss = self.criterion(output, target, edge_map)
+        loss, loss_term = self.criterion(output, target, edge_map)
         acc = self.accuracy(output, target)
-        return (loss, acc, output) if is_eval else (loss, acc)
+        return (loss, loss_term, acc, output) if is_eval else (loss, loss_term, acc)
 
     def summary_scalar(self, metrics):
         for tag, value in metrics.items():
@@ -111,21 +111,28 @@ class EpochHistory():
     def __init__(self, length):
         self.count = 0
         self.len = length
+        self.loss_term = {'xent': None, 'l1': None, 'edge': None}
         self.losses = np.zeros(self.len)
         self.accuracies = np.zeros(self.len)
 
-    def add(self, loss, acc):
+    def add(self, loss, loss_term, acc):
         self.losses[self.count] = loss.data[0]
         self.accuracies[self.count] = acc.data[0]
+
+        for k, v in loss_term.items():
+            if self.loss_term[k] is None:
+                self.loss_term[k] = np.zeros(self.len)
+            self.loss_term[k][self.count] = v.data[0]
+
         self.count += 1
 
-    def mean(self):
-        return self.losses.mean(), self.accuracies.mean()
-
     def metric(self, prefix=''):
-        loss, accuracy = self.mean()
-        return {prefix + 'loss': loss,
-                prefix + 'accuracy': accuracy}
+        terms = {prefix + 'loss': self.losses.mean(),
+                 prefix + 'accuracy': self.accuracies.mean()}
+        terms.update({
+            prefix + k: v.mean() for k, v in self.loss_term.items()
+            if v is not None})
+        return terms
 
 
 class LayoutAccuracy():
@@ -147,29 +154,33 @@ class LayoutLoss():
         self.l1_criterion = nn.L1Loss().cuda()
         self.edge_criterion = nn.BCELoss().cuda()
 
-    def __call__(self, pred, target, edge_map):
-        pixelwise_loss = self.pixelwise_loss(pred, target)
+    def __call__(self, pred, target, edge_map) -> (float, dict):
+        pixelwise_loss, loss_term = self.pixelwise_loss(pred, target)
 
         if not self.edge_λ:
-            return self.pixelwise_loss(pred, target)
+            return pixelwise_loss, loss_term
 
-        return pixelwise_loss + self.edge_λ * self.edge_loss(pred, edge_map)
+        edge_loss, edge_loss_term = self.edge_loss(pred, edge_map)
 
-    def pixelwise_loss(self, pred, target):
+        loss_term.update(edge_loss_term)
+        return pixelwise_loss + self.edge_λ * edge_loss, loss_term
+
+    def pixelwise_loss(self, pred, target) -> (float, dict):
         log_pred = F.log_softmax(pred)
         xent_loss = self.cross_entropy_criterion(log_pred, target)
 
         if not self.l1_λ:
-            return xent_loss
+            return xent_loss, {'xent': xent_loss}
 
         onehot_target = (
             torch.FloatTensor(pred.size())
             .zero_().cuda()
             .scatter_(1, target.data.unsqueeze(1), 1))
         l1_loss = self.l1_criterion(pred, Variable(onehot_target))
-        return xent_loss + self.l1_λ * l1_loss
 
-    def edge_loss(self, pred, edge_map):
+        return xent_loss + self.l1_λ * l1_loss, {'xent': xent_loss, 'l1': l1_loss}
+
+    def edge_loss(self, pred, edge_map) -> (float, dict):
         _, pred = torch.max(pred, 1)
         pred = pred.float().squeeze(1)
 
@@ -180,7 +191,12 @@ class LayoutLoss():
         mask = pred != 0
         pred[mask] = 1
         edge_map = Variable(edge_map.float().cuda())
-        return self.edge_criterion(pred[mask], edge_map[mask].float())
+        edge_loss = self.edge_criterion(pred[mask], edge_map[mask].float())
+
+        return edge_loss, {'edge': edge_loss}
+
+    def set_summary_logger(self, tf_summary):
+        self.tf_summary = tf_summary
 
 
 class FCN(nn.Module):
