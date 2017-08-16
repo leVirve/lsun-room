@@ -35,7 +35,7 @@ class Stage_Net():
 		self.tf_summary = Logger('./logs', name=name)
 		self.criterion = Segmentation_Loss()
 		self.accuracy = Pixelwise_Accuracy()
-
+		self.stage_2 = stage_2
 	def train(self, train_loader, validate_loader, epochs):
 		
 		for epoch in range(1, epochs+1):
@@ -80,7 +80,10 @@ class Stage_Net():
 
 	def predict(self, data_loader, name):
 		self.model.eval()
-		layout_folder = 'output/layout/%s/' % name
+		if not self.stage_2:
+    		layout_folder = 'output/layout/%s/' % name
+		else:
+    		layout_folder = 'output_stage2/layout/%s/' % name
 		os.makedirs(layout_folder, exist_ok=True)
 		for i, (image, _, ) in enumerate(data_loader):
 			output = self.model(Variable(image, volatile=True).cuda())
@@ -118,7 +121,10 @@ class Stage_Net():
 		self.model.load_state_dict(torch.load(path))
 
 	def save_model(self):
-		folder = 'output/weight/%s' % self.name
+		if not self.stage_2:
+    		folder = 'output/weight/%s' % self.name
+		else:
+    		folder = 'stage2_output/weights/%s' % self.name
 		os.makedirs(folder, exist_ok=True)
 		torch.save(self.model.state_dict(), folder + '/%d.pth' % self.epoch)
 
