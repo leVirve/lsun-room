@@ -1,0 +1,109 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+BasicBlock	../net.py	/^class BasicBlock(nn.Module):$/;"	kind:class	line:212
+Bottleneck	../net.py	/^class Bottleneck(nn.Module):$/;"	kind:class	line:241
+DataItem	../dataset.py	/^class DataItem():$/;"	kind:class	line:45
+EpochHistory	../net.py	/^class EpochHistory():$/;"	kind:class	line:125
+ExponentialLR	../lr_scheduler.py	/^class ExponentialLR(_LRScheduler):$/;"	kind:class	line:138
+FCN	../net.py	/^class FCN(nn.Module):$/;"	kind:class	line:367
+ImageFolderDataset	../dataset.py	/^class ImageFolderDataset(dset.ImageFolder):$/;"	kind:class	line:79
+Item	../dataset.py	/^class Item():$/;"	kind:class	line:10
+LambdaLR	../lr_scheduler.py	/^class LambdaLR(_LRScheduler):$/;"	kind:class	line:34
+Logger	../logger.py	/^class Logger(object):$/;"	kind:class	line:11
+MultiStepLR	../lr_scheduler.py	/^class MultiStepLR(_LRScheduler):$/;"	kind:class	line:103
+Phase	../dataset.py	/^def Phase(phase):$/;"	kind:function	line:74
+Pixelwise_Accuracy	../net.py	/^class Pixelwise_Accuracy():$/;"	kind:class	line:156
+ReduceLROnPlateau	../lr_scheduler.py	/^class ReduceLROnPlateau(object):$/;"	kind:class	line:156
+ResNet	../net.py	/^class ResNet(nn.Module):$/;"	kind:class	line:278
+Segmentation_Loss	../net.py	/^class Segmentation_Loss():$/;"	kind:class	line:165
+Stage_Net	../net.py	/^class Stage_Net():$/;"	kind:class	line:28
+StepLR	../lr_scheduler.py	/^class StepLR(_LRScheduler):$/;"	kind:class	line:70
+_LRScheduler	../lr_scheduler.py	/^class _LRScheduler(object):$/;"	kind:class	line:5
+__call__	../net.py	/^	def __call__(self, output, target):$/;"	kind:member	line:158
+__call__	../net.py	/^	def __call__(self, pred, target) -> (float,dict):$/;"	kind:member	line:171
+__getitem__	../dataset.py	/^	def __getitem__(self, index):$/;"	kind:member	line:92
+__init__	../dataset.py	/^	def __init__(self, **kwargs):$/;"	kind:member	line:12
+__init__	../dataset.py	/^	def __init__(self, root, target_size, phase):$/;"	kind:member	line:86
+__init__	../dataset.py	/^	def __init__(self, root_dir, phase):$/;"	kind:member	line:47
+__init__	../logger.py	/^    def __init__(self, log_dir, name=None):$/;"	kind:member	line:13
+__init__	../lr_scheduler.py	/^    def __init__(self, optimizer, gamma, last_epoch=-1):$/;"	kind:member	line:147
+__init__	../lr_scheduler.py	/^    def __init__(self, optimizer, last_epoch=-1):$/;"	kind:member	line:6
+__init__	../lr_scheduler.py	/^    def __init__(self, optimizer, lr_lambda, last_epoch=-1):$/;"	kind:member	line:53
+__init__	../lr_scheduler.py	/^    def __init__(self, optimizer, milestones, gamma=0.1, last_epoch=-1):$/;"	kind:member	line:125
+__init__	../lr_scheduler.py	/^    def __init__(self, optimizer, mode='min', factor=0.1, patience=10,$/;"	kind:member	line:199
+__init__	../lr_scheduler.py	/^    def __init__(self, optimizer, step_size, gamma=0.1, last_epoch=-1):$/;"	kind:member	line:93
+__init__	../net.py	/^	def __init__(self, block, layers, num_classes=37, stage_2=False):$/;"	kind:member	line:280
+__init__	../net.py	/^	def __init__(self, in_planes, planes, stride=1, downsample=None):$/;"	kind:member	line:214
+__init__	../net.py	/^	def __init__(self, inplanes, planes, stride=1, downsample=None):$/;"	kind:member	line:244
+__init__	../net.py	/^	def __init__(self, l1_portion=0.1, weights=None):$/;"	kind:member	line:167
+__init__	../net.py	/^	def __init__(self, length):$/;"	kind:member	line:127
+__init__	../net.py	/^	def __init__(self, name, pretrained, stage_2):$/;"	kind:member	line:30
+__init__	../net.py	/^	def __init__(self, num_classes=5):$/;"	kind:member	line:368
+__len__	../dataset.py	/^	def __len__(self):$/;"	kind:member	line:112
+__str__	../dataset.py	/^	def __str__(self):$/;"	kind:member	line:42
+_init_is_better	../lr_scheduler.py	/^    def _init_is_better(self, mode, threshold, threshold_mode):$/;"	kind:member	line:278
+_initialize_weights	../net.py	/^	def _initialize_weights(self):$/;"	kind:member	line:430
+_load	../dataset.py	/^	def _load(self, phase):$/;"	kind:member	line:52
+_make_layer	../net.py	/^	def _make_layer(self, block, planes, blocks, stride=1):$/;"	kind:member	line:317
+_reduce_lr	../lr_scheduler.py	/^    def _reduce_lr(self, epoch):$/;"	kind:member	line:264
+_reset	../lr_scheduler.py	/^    def _reset(self):$/;"	kind:member	line:237
+add	../net.py	/^	def add(self, loss, loss_term, acc):$/;"	kind:member	line:134
+build_resnet101_FCN	../net.py	/^def build_resnet101_FCN(pretrained=False, nb_classes=None, stage_2=False):$/;"	kind:function	line:196
+conv3x3	../net.py	/^def conv3x3(in_planes, out_planes, stride=1):$/;"	kind:function	line:209
+dataset.py	../dataset.py	1;"	kind:file	line:1
+evaluate	../net.py	/^	def evaluate(self, data_loader, prefix=''):$/;"	kind:member	line:69
+expansion	../net.py	/^	expansion = 1 $/;"	kind:variable	line:213
+expansion	../net.py	/^	expansion = 4$/;"	kind:variable	line:242
+forward	../net.py	/^	def forward(self, image, target, is_eval=False):$/;"	kind:member	line:94
+forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:223
+forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:256
+forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:334
+forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:445
+get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:133
+get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:151
+get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:23
+get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:65
+get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:98
+histogram	../logger.py	/^    def histogram(self, tag, values, step, bins=1000):$/;"	kind:member	line:41
+image	../dataset.py	/^	def image(self):$/;"	kind:member	line:21
+image	../logger.py	/^    def image(self, tag, images, step):$/;"	kind:member	line:21
+in_cooldown	../lr_scheduler.py	/^    def in_cooldown(self):$/;"	kind:member	line:275
+label	../dataset.py	/^	def label(self):$/;"	kind:member	line:27
+load	../dataset.py	/^	def load(self, filename):$/;"	kind:member	line:95
+load_image	../utils.py	/^def load_image(path):$/;"	kind:function	line:13
+load_mat	../utils.py	/^def load_mat(path):$/;"	kind:function	line:8
+load_model	../net.py	/^	def load_model(self, path):$/;"	kind:member	line:117
+logger.py	../logger.py	1;"	kind:file	line:1
+lr_scheduler.py	../lr_scheduler.py	1;"	kind:file	line:1
+main	../stage1.py	/^def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):$/;"	kind:function	line:18
+main	../train.py	/^def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):$/;"	kind:function	line:18
+mean_point	../utils.py	/^def mean_point(points):$/;"	kind:function	line:20
+metric	../net.py	/^	def metric(self, prefix=''):$/;"	kind:member	line:146
+model_urls	../net.py	/^model_urls = {$/;"	kind:variable	line:20
+net.py	../net.py	1;"	kind:file	line:1
+pixelwise_accuracy	../net.py	/^	def pixelwise_accuracy(self, output, target):$/;"	kind:member	line:161
+pixelwise_loss	../net.py	/^	def pixelwise_loss(self, pred, target):$/;"	kind:member	line:176
+predict	../net.py	/^	def predict(self, data_loader, name):$/;"	kind:member	line:81
+save_image	../utils.py	/^def save_image(path, img):$/;"	kind:function	line:16
+save_layout	../dataset.py	/^	def save_layout(self, visualization=False):$/;"	kind:member	line:34
+save_model	../net.py	/^	def save_model(self):$/;"	kind:member	line:120
+scalar	../logger.py	/^    def scalar(self, tag, value, step):$/;"	kind:member	line:16
+set_summary_loagger	../net.py	/^	def set_summary_loagger(self, tf_summary):$/;"	kind:member	line:192
+stage1.py	../stage1.py	1;"	kind:file	line:1
+stage_two	../train.py	/^def stage_two(name, dataset_root, image_size, epochs, batch_size, workers, resume):$/;"	kind:function	line:47
+step	../lr_scheduler.py	/^    def step(self, epoch=None):$/;"	kind:member	line:26
+step	../lr_scheduler.py	/^    def step(self, metrics, epoch=None):$/;"	kind:member	line:243
+summary_image	../net.py	/^	def summary_image(self, output, target, prefix):$/;"	kind:member	line:109
+summary_scalar	../net.py	/^	def summary_scalar(self, metrics):$/;"	kind:member	line:105
+timeit	../utils.py	/^def timeit(f):$/;"	kind:function	line:24
+to_numpy	../net.py	/^		def to_numpy(imgs):$/;"	kind:function	line:110
+to_var	../net.py	/^		def to_var(t):$/;"	kind:function	line:96
+train	../net.py	/^	def train(self, train_loader, validate_loader, epochs):$/;"	kind:member	line:39
+train.py	../train.py	1;"	kind:file	line:1
+transform	../dataset.py	/^	transform = transforms.Compose([$/;"	kind:variable	line:81
+utils.py	../utils.py	1;"	kind:file	line:1
+wrap	../utils.py	/^	def wrap(*args, **kw):$/;"	kind:function	line:26
