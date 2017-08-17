@@ -8,13 +8,13 @@ Stage1
     Training command line: python stage1.py
 
 Stage2
-    Train Model on LSUN RGBD dataset for semantic transfer
-    Path: Add the dataset under the path of -- ../lsun-room/stage2_data/
-    Dataset Content: images folder, layout_seg_images folder along with testing.mat, training.mat, validation.mat
-        - Images: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/image.zip
-        - Training.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/training.mat
-        - Validation.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/validation.mat
-        - Testing.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/testing.mat
-        - Layout_seg_images: Room Layout semantic representation is contributed by LeVrive
+    Train Model on LSUN RGBD dataset for semantic transfer \n
+    Path: Add the dataset under the path of -- ../lsun-room/stage2_data/ \n
+    Dataset Content: images folder, layout_seg_images folder along with testing.mat, training.mat, validation.mat \n
+        - Images: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/image.zip \n
+        - Training.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/training.mat \n
+        - Validation.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/validation.mat \n 
+        - Testing.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/testing.mat \n
+        - Layout_seg_images: Room Layout semantic representation is contributed by LeVrive \n 
 
     Training command line: python stage2.py
