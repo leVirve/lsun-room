@@ -2,15 +2,15 @@
 import click
 import torch
 
-from lsun_room import Phase
-from lsun_room.lsun_dataset import ImageFolderDataset
+from stage2_utils import Phase
+from stage2_utils.lsun_dataset import ImageFolderDataset
 from net import *
 
 torch.backends.cudnn.benchmark = True
 
 @click.command()
 @click.option('--name', type=str)
-@click.option('--dataset_root', default='../stage2/data')
+@click.option('--dataset_root', default='../lsun-room/stage2_data')
 @click.option('--image_size', default=(404, 404), type=(int, int))
 @click.option('--epochs', default=20, type=int)
 @click.option('--batch_size', default=1, type=int)
@@ -33,15 +33,9 @@ def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
 
 	print('===> Prepare model')
 
-	net = Stage_Net(name='ResFCN_multitask_testing', pretrained=False, stage_2=True, joint_class=True, type_portion=1.)
-	
-#	for param in net.model.parameters():
-#		param.requires_grad = False		
+	net = Stage_Net(name='stage2_ResFCN', pretrained=False, stage_2=True, joint_class=True, type_portion=0.1, edge_portion=0.1)
 
-	for param in net.model.fc.parameters():
-		param.requires_grad = True
-	
-	pretrain_dict = torch.load('/home/cvlab/Documents/torch/SemanticTransfer/output/weight/Res101FCN16s_3/20.pth')
+	pretrain_dict = torch.load('/home/cvlab/Documents/lsun-room/stage1/output/weight/Res101FCN16s_3/20.pth')
 	model_dict = net.model.state_dict()
 	pretrained_dict = {k:v for k, v in pretrain_dict.items() if k in model_dict}
 	model_dict.update(pretrained_dict)

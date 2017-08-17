@@ -2,14 +2,14 @@
 import click
 import torch
 
-from dataset import ImageFolderDataset
+from stage1_utils.dataset import ImageFolderDataset
 from net import *
 
 torch.backends.cudnn.benchmark = True
 
 @click.command()
 @click.option('--name', type=str)
-@click.option('--dataset_root', default='../SemanticTransfer')
+@click.option('--dataset_root', default='../lsun-room/stage1_data')
 @click.option('--image_size', default=(404, 404), type=(int, int))
 @click.option('--epochs', default=20, type=int)
 @click.option('--batch_size', default=1, type=int)
@@ -36,13 +36,12 @@ def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
 
 	print('===> Prepare model')
 
-	net = Stage_Net(name='FCN32s-1', pretrained=False, stage_2=False)
+	net = Stage_Net(name='stage1_ResFCN', pretrained=False, stage_2=False, joint_class=False, type_portion=False, edge_portion=False)
 	print('===> Start training')
 	net.train(train_loader=train_loader,
 		validate_loader=validate_loader,
 		epochs=epochs)
 	net.evaluate(data_loader=validate_loader, prefix='')
-	net.predict(data_loader=test_loader, name='FCN32s_seg_layout')
 
 if __name__ == '__main__':
 	main()

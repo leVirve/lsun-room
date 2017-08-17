@@ -56,7 +56,7 @@ class DataItem():
 		elif phase == 'train' or 'test':
 			phase_ = phase
 
-		split_path = '../SemanticTransfer/{}_list.txt'.format(phase_)
+		split_path = '../lsun-room/stage1_utils/{}_list.txt'.format(phase_)
 		splits = pd.read_csv(split_path, header=None, index_col=0)
 		file_list = []
 		for filename in splits[1]:
