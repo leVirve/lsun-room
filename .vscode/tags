@@ -4,31 +4,40 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
-BasicBlock	../net.py	/^class BasicBlock(nn.Module):$/;"	kind:class	line:212
-Bottleneck	../net.py	/^class Bottleneck(nn.Module):$/;"	kind:class	line:241
-DataItem	../dataset.py	/^class DataItem():$/;"	kind:class	line:45
-EpochHistory	../net.py	/^class EpochHistory():$/;"	kind:class	line:125
+BasicBlock	../Resnet_blocks.py	/^class BasicBlock(nn.Module):$/;"	kind:class	line:9
+Bottleneck	../Resnet_blocks.py	/^class Bottleneck(nn.Module):$/;"	kind:class	line:38
+DataItem	../stage1_utils/dataset.py	/^class DataItem():$/;"	kind:class	line:45
+DataItems	../stage2_utils/data.py	/^class DataItems():$/;"	kind:class	line:56
+EpochHistory	../net.py	/^class EpochHistory():$/;"	kind:class	line:161
 ExponentialLR	../lr_scheduler.py	/^class ExponentialLR(_LRScheduler):$/;"	kind:class	line:138
-FCN	../net.py	/^class FCN(nn.Module):$/;"	kind:class	line:367
-ImageFolderDataset	../dataset.py	/^class ImageFolderDataset(dset.ImageFolder):$/;"	kind:class	line:79
-Item	../dataset.py	/^class Item():$/;"	kind:class	line:10
+FCN	../models.py	/^class FCN(nn.Module):$/;"	kind:class	line:119
+ImageFolderDataset	../stage1_utils/dataset.py	/^class ImageFolderDataset(dset.ImageFolder):$/;"	kind:class	line:79
+ImageFolderDataset	../stage2_utils/lsun_dataset.py	/^class ImageFolderDataset(dset.ImageFolder):$/;"	kind:class	line:13
+Item	../stage1_utils/dataset.py	/^class Item():$/;"	kind:class	line:10
+Item	../stage2_utils/data.py	/^class Item():$/;"	kind:class	line:8
+Joint_Accuracy	../net.py	/^class Joint_Accuracy():$/;"	kind:class	line:199
+Joint_Loss	../net.py	/^class Joint_Loss():$/;"	kind:class	line:212
 LambdaLR	../lr_scheduler.py	/^class LambdaLR(_LRScheduler):$/;"	kind:class	line:34
+Layout	../stage2_utils/label.py	/^class Layout:$/;"	kind:class	line:4
 Logger	../logger.py	/^class Logger(object):$/;"	kind:class	line:11
 MultiStepLR	../lr_scheduler.py	/^class MultiStepLR(_LRScheduler):$/;"	kind:class	line:103
-Phase	../dataset.py	/^def Phase(phase):$/;"	kind:function	line:74
-Pixelwise_Accuracy	../net.py	/^class Pixelwise_Accuracy():$/;"	kind:class	line:156
+Phase	../stage1_utils/dataset.py	/^def Phase(phase):$/;"	kind:function	line:74
+Phase	../stage2_utils/__init__.py	/^class Phase:$/;"	kind:class	line:4
 ReduceLROnPlateau	../lr_scheduler.py	/^class ReduceLROnPlateau(object):$/;"	kind:class	line:156
-ResNet	../net.py	/^class ResNet(nn.Module):$/;"	kind:class	line:278
-Segmentation_Loss	../net.py	/^class Segmentation_Loss():$/;"	kind:class	line:165
-Stage_Net	../net.py	/^class Stage_Net():$/;"	kind:class	line:28
+ResNet	../models.py	/^class ResNet(nn.Module):$/;"	kind:class	line:17
+Resnet_blocks.py	../Resnet_blocks.py	1;"	kind:file	line:1
+Stage_Net	../net.py	/^class Stage_Net():$/;"	kind:class	line:26
 StepLR	../lr_scheduler.py	/^class StepLR(_LRScheduler):$/;"	kind:class	line:70
+TEST	../stage2_utils/__init__.py	/^    TEST = 'testing'$/;"	kind:variable	line:7
+TRAIN	../stage2_utils/__init__.py	/^    TRAIN = 'training'$/;"	kind:variable	line:5
+VALIDATE	../stage2_utils/__init__.py	/^    VALIDATE = 'validation'$/;"	kind:variable	line:6
 _LRScheduler	../lr_scheduler.py	/^class _LRScheduler(object):$/;"	kind:class	line:5
-__call__	../net.py	/^	def __call__(self, output, target):$/;"	kind:member	line:158
-__call__	../net.py	/^	def __call__(self, pred, target) -> (float,dict):$/;"	kind:member	line:171
-__getitem__	../dataset.py	/^	def __getitem__(self, index):$/;"	kind:member	line:92
-__init__	../dataset.py	/^	def __init__(self, **kwargs):$/;"	kind:member	line:12
-__init__	../dataset.py	/^	def __init__(self, root, target_size, phase):$/;"	kind:member	line:86
-__init__	../dataset.py	/^	def __init__(self, root_dir, phase):$/;"	kind:member	line:47
+__call__	../net.py	/^	def __call__(self, output, seg_target, type_target, joint_class):$/;"	kind:member	line:201
+__call__	../net.py	/^	def __call__(self, pred, target, edge_map, room_type) -> (float,dict):$/;"	kind:member	line:223
+__getitem__	../stage1_utils/dataset.py	/^	def __getitem__(self, index):$/;"	kind:member	line:92
+__getitem__	../stage2_utils/lsun_dataset.py	/^    def __getitem__(self, index):$/;"	kind:member	line:25
+__init__	../Resnet_blocks.py	/^	def __init__(self, in_planes, planes, stride=1, downsample=None):$/;"	kind:member	line:11
+__init__	../Resnet_blocks.py	/^	def __init__(self, inplanes, planes, stride=1, downsample=None):$/;"	kind:member	line:41
 __init__	../logger.py	/^    def __init__(self, log_dir, name=None):$/;"	kind:member	line:13
 __init__	../lr_scheduler.py	/^    def __init__(self, optimizer, gamma, last_epoch=-1):$/;"	kind:member	line:147
 __init__	../lr_scheduler.py	/^    def __init__(self, optimizer, last_epoch=-1):$/;"	kind:member	line:6
@@ -36,74 +45,134 @@ __init__	../lr_scheduler.py	/^    def __init__(self, optimizer, lr_lambda, last_
 __init__	../lr_scheduler.py	/^    def __init__(self, optimizer, milestones, gamma=0.1, last_epoch=-1):$/;"	kind:member	line:125
 __init__	../lr_scheduler.py	/^    def __init__(self, optimizer, mode='min', factor=0.1, patience=10,$/;"	kind:member	line:199
 __init__	../lr_scheduler.py	/^    def __init__(self, optimizer, step_size, gamma=0.1, last_epoch=-1):$/;"	kind:member	line:93
-__init__	../net.py	/^	def __init__(self, block, layers, num_classes=37, stage_2=False):$/;"	kind:member	line:280
-__init__	../net.py	/^	def __init__(self, in_planes, planes, stride=1, downsample=None):$/;"	kind:member	line:214
-__init__	../net.py	/^	def __init__(self, inplanes, planes, stride=1, downsample=None):$/;"	kind:member	line:244
-__init__	../net.py	/^	def __init__(self, l1_portion=0.1, weights=None):$/;"	kind:member	line:167
-__init__	../net.py	/^	def __init__(self, length):$/;"	kind:member	line:127
-__init__	../net.py	/^	def __init__(self, name, pretrained, stage_2):$/;"	kind:member	line:30
-__init__	../net.py	/^	def __init__(self, num_classes=5):$/;"	kind:member	line:368
-__len__	../dataset.py	/^	def __len__(self):$/;"	kind:member	line:112
-__str__	../dataset.py	/^	def __str__(self):$/;"	kind:member	line:42
+__init__	../models.py	/^	def __init__(self, block, layers, num_classes=37, num_rtype=11, stage_2=False, joint_class=False):$/;"	kind:member	line:19
+__init__	../models.py	/^	def __init__(self, pretrained=True, num_classes=37, stage_2=False):$/;"	kind:member	line:120
+__init__	../net.py	/^	def __init__(self, l1_portion=0.1, edge_portion=0.1, type_portion=1., weights=None):$/;"	kind:member	line:214
+__init__	../net.py	/^	def __init__(self, length, joint_class):$/;"	kind:member	line:163
+__init__	../net.py	/^    def __init__(self, name, pretrained, stage_2, joint_class, type_portion, edge_portion):$/;"	kind:member	line:28
+__init__	../stage1_utils/dataset.py	/^	def __init__(self, **kwargs):$/;"	kind:member	line:12
+__init__	../stage1_utils/dataset.py	/^	def __init__(self, root, target_size, phase):$/;"	kind:member	line:86
+__init__	../stage1_utils/dataset.py	/^	def __init__(self, root_dir, phase):$/;"	kind:member	line:47
+__init__	../stage2_utils/data.py	/^    def __init__(self, **kwargs):$/;"	kind:member	line:10
+__init__	../stage2_utils/data.py	/^    def __init__(self, root_dir, phase):$/;"	kind:member	line:58
+__init__	../stage2_utils/lsun_dataset.py	/^    def __init__(self, root, target_size, phase):$/;"	kind:member	line:21
+__init__.py	../stage2_utils/__init__.py	1;"	kind:file	line:1
+__len__	../stage1_utils/dataset.py	/^	def __len__(self):$/;"	kind:member	line:112
+__len__	../stage2_utils/lsun_dataset.py	/^    def __len__(self):$/;"	kind:member	line:52
+__str__	../stage1_utils/dataset.py	/^	def __str__(self):$/;"	kind:member	line:42
+__str__	../stage2_utils/data.py	/^    def __str__(self):$/;"	kind:member	line:52
 _init_is_better	../lr_scheduler.py	/^    def _init_is_better(self, mode, threshold, threshold_mode):$/;"	kind:member	line:278
-_initialize_weights	../net.py	/^	def _initialize_weights(self):$/;"	kind:member	line:430
-_load	../dataset.py	/^	def _load(self, phase):$/;"	kind:member	line:52
-_make_layer	../net.py	/^	def _make_layer(self, block, planes, blocks, stride=1):$/;"	kind:member	line:317
+_initialize_weights	../models.py	/^	def _initialize_weights(self):$/;"	kind:member	line:185
+_load	../stage1_utils/dataset.py	/^	def _load(self, phase):$/;"	kind:member	line:52
+_load	../stage2_utils/data.py	/^    def _load(self, phase):$/;"	kind:member	line:70
+_make_layer	../models.py	/^	def _make_layer(self, block, planes, blocks, stride=1):$/;"	kind:member	line:59
 _reduce_lr	../lr_scheduler.py	/^    def _reduce_lr(self, epoch):$/;"	kind:member	line:264
 _reset	../lr_scheduler.py	/^    def _reset(self):$/;"	kind:member	line:237
-add	../net.py	/^	def add(self, loss, loss_term, acc):$/;"	kind:member	line:134
-build_resnet101_FCN	../net.py	/^def build_resnet101_FCN(pretrained=False, nb_classes=None, stage_2=False):$/;"	kind:function	line:196
-conv3x3	../net.py	/^def conv3x3(in_planes, out_planes, stride=1):$/;"	kind:function	line:209
-dataset.py	../dataset.py	1;"	kind:file	line:1
-evaluate	../net.py	/^	def evaluate(self, data_loader, prefix=''):$/;"	kind:member	line:69
-expansion	../net.py	/^	expansion = 1 $/;"	kind:variable	line:213
-expansion	../net.py	/^	expansion = 4$/;"	kind:variable	line:242
-forward	../net.py	/^	def forward(self, image, target, is_eval=False):$/;"	kind:member	line:94
-forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:223
-forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:256
-forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:334
-forward	../net.py	/^	def forward(self, x):$/;"	kind:member	line:445
+add	../net.py	/^	def add(self, loss, loss_term, acc):$/;"	kind:member	line:172
+build_resnet101_FCN	../models.py	/^def build_resnet101_FCN(pretrained=False, nb_classes=None, stage_2=False, joint_class=False):$/;"	kind:function	line:4
+ceiling	../stage2_utils/label.py	/^    ceiling = 5$/;"	kind:variable	line:9
+center_point	../stage2_utils/label.py	/^def center_point(points, indices):$/;"	kind:function	line:12
+conv3x3	../Resnet_blocks.py	/^def conv3x3(in_planes, out_planes, stride=1):$/;"	kind:function	line:6
+data.py	../stage2_utils/data.py	1;"	kind:file	line:1
+dataset.py	../stage1_utils/dataset.py	1;"	kind:file	line:1
+draw_line	../stage2_utils/edge.py	/^def draw_line(img, pt1, pt2, width=1, color=(255, 255, 255)):$/;"	kind:function	line:5
+edge.py	../stage2_utils/edge.py	1;"	kind:file	line:1
+edge_loss	../net.py	/^	def edge_loss(self, pred, edge_map):$/;"	kind:member	line:263
+edge_map	../stage2_utils/edge.py	/^def edge_map(e, point_pairs, **kwargs):$/;"	kind:function	line:13
+evaluate	../net.py	/^    def evaluate(self, data_loader, prefix=''):$/;"	kind:member	line:93
+expansion	../Resnet_blocks.py	/^	expansion = 1 $/;"	kind:variable	line:10
+expansion	../Resnet_blocks.py	/^	expansion = 4$/;"	kind:variable	line:39
+floor	../stage2_utils/label.py	/^    floor = 4$/;"	kind:variable	line:8
+forward	../Resnet_blocks.py	/^	def forward(self, x):$/;"	kind:member	line:20
+forward	../Resnet_blocks.py	/^	def forward(self, x):$/;"	kind:member	line:53
+forward	../models.py	/^	def forward(self, x):$/;"	kind:member	line:200
+forward	../models.py	/^	def forward(self, x):$/;"	kind:member	line:76
+forward	../net.py	/^    def forward(self, image, target, edge_map, room_type, is_eval=False):$/;"	kind:member	line:123
+frontal	../stage2_utils/label.py	/^    frontal = 1$/;"	kind:variable	line:5
+func_map	../stage2_utils/edge.py	/^func_map = {$/;"	kind:variable	line:83
+func_map	../stage2_utils/label.py	/^func_map = {$/;"	kind:variable	line:108
 get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:133
 get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:151
 get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:23
 get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:65
 get_lr	../lr_scheduler.py	/^    def get_lr(self):$/;"	kind:member	line:98
 histogram	../logger.py	/^    def histogram(self, tag, values, step, bins=1000):$/;"	kind:member	line:41
-image	../dataset.py	/^	def image(self):$/;"	kind:member	line:21
 image	../logger.py	/^    def image(self, tag, images, step):$/;"	kind:member	line:21
+image	../stage1_utils/dataset.py	/^	def image(self):$/;"	kind:member	line:21
+image	../stage2_utils/data.py	/^    def image(self):$/;"	kind:member	line:19
 in_cooldown	../lr_scheduler.py	/^    def in_cooldown(self):$/;"	kind:member	line:275
-label	../dataset.py	/^	def label(self):$/;"	kind:member	line:27
-load	../dataset.py	/^	def load(self, filename):$/;"	kind:member	line:95
-load_image	../utils.py	/^def load_image(path):$/;"	kind:function	line:13
-load_mat	../utils.py	/^def load_mat(path):$/;"	kind:function	line:8
-load_model	../net.py	/^	def load_model(self, path):$/;"	kind:member	line:117
+label	../stage1_utils/dataset.py	/^	def label(self):$/;"	kind:member	line:27
+label.py	../stage2_utils/label.py	1;"	kind:file	line:1
+layout	../stage2_utils/data.py	/^    def layout(self):$/;"	kind:member	line:26
+left	../stage2_utils/label.py	/^    left = 2$/;"	kind:variable	line:6
+load	../stage1_utils/dataset.py	/^	def load(self, filename):$/;"	kind:member	line:95
+load	../stage2_utils/lsun_dataset.py	/^    def load(self, name, index):$/;"	kind:member	line:28
+load_edge_map	../stage2_utils/lsun_dataset.py	/^    def load_edge_map(self, index):$/;"	kind:member	line:47
+load_image	../utils.py	/^def load_image(path):$/;"	kind:function	line:15
+load_mat	../utils.py	/^def load_mat(path):$/;"	kind:function	line:9
+load_model	../net.py	/^    def load_model(self, path):$/;"	kind:member	line:153
 logger.py	../logger.py	1;"	kind:file	line:1
 lr_scheduler.py	../lr_scheduler.py	1;"	kind:file	line:1
+lsun_dataset.py	../stage2_utils/lsun_dataset.py	1;"	kind:file	line:1
 main	../stage1.py	/^def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):$/;"	kind:function	line:18
+main	../stage2.py	/^def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):$/;"	kind:function	line:19
 main	../train.py	/^def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):$/;"	kind:function	line:18
-mean_point	../utils.py	/^def mean_point(points):$/;"	kind:function	line:20
-metric	../net.py	/^	def metric(self, prefix=''):$/;"	kind:member	line:146
-model_urls	../net.py	/^model_urls = {$/;"	kind:variable	line:20
+mapping_func	../stage2_utils/edge.py	/^def mapping_func(room_type):$/;"	kind:function	line:98
+mapping_func	../stage2_utils/label.py	/^def mapping_func(room_type):$/;"	kind:function	line:123
+mean_point	../utils.py	/^def mean_point(points):$/;"	kind:function	line:24
+metric	../net.py	/^	def metric(self, prefix=''):$/;"	kind:member	line:188
+model_urls	../net.py	/^model_urls = {$/;"	kind:variable	line:18
+models.py	../models.py	1;"	kind:file	line:1
 net.py	../net.py	1;"	kind:file	line:1
-pixelwise_accuracy	../net.py	/^	def pixelwise_accuracy(self, output, target):$/;"	kind:member	line:161
-pixelwise_loss	../net.py	/^	def pixelwise_loss(self, pred, target):$/;"	kind:member	line:176
-predict	../net.py	/^	def predict(self, data_loader, name):$/;"	kind:member	line:81
-save_image	../utils.py	/^def save_image(path, img):$/;"	kind:function	line:16
-save_layout	../dataset.py	/^	def save_layout(self, visualization=False):$/;"	kind:member	line:34
-save_model	../net.py	/^	def save_model(self):$/;"	kind:member	line:120
+pixelwise_accuracy	../net.py	/^	def pixelwise_accuracy(self, output, target):$/;"	kind:member	line:204
+pixelwise_loss	../net.py	/^	def pixelwise_loss(self, pred, target):$/;"	kind:member	line:247
+predict	../net.py	/^    def predict(self, data_loader, name):$/;"	kind:member	line:110
+remap_layout	../stage2_utils/data.py	/^    def remap_layout(self):$/;"	kind:member	line:36
+right	../stage2_utils/label.py	/^    right = 3$/;"	kind:variable	line:7
+save_image	../utils.py	/^def save_image(path, img):$/;"	kind:function	line:19
+save_layout	../stage1_utils/dataset.py	/^	def save_layout(self, visualization=False):$/;"	kind:member	line:34
+save_layout	../stage2_utils/data.py	/^    def save_layout(self, visualization=False):$/;"	kind:member	line:44
+save_model	../net.py	/^    def save_model(self):$/;"	kind:member	line:156
 scalar	../logger.py	/^    def scalar(self, tag, value, step):$/;"	kind:member	line:16
-set_summary_loagger	../net.py	/^	def set_summary_loagger(self, tf_summary):$/;"	kind:member	line:192
+set_summary_loagger	../net.py	/^	def set_summary_loagger(self, tf_summary):$/;"	kind:member	line:283
 stage1.py	../stage1.py	1;"	kind:file	line:1
+stage2.py	../stage2.py	1;"	kind:file	line:1
 stage_two	../train.py	/^def stage_two(name, dataset_root, image_size, epochs, batch_size, workers, resume):$/;"	kind:function	line:47
 step	../lr_scheduler.py	/^    def step(self, epoch=None):$/;"	kind:member	line:26
 step	../lr_scheduler.py	/^    def step(self, metrics, epoch=None):$/;"	kind:member	line:243
-summary_image	../net.py	/^	def summary_image(self, output, target, prefix):$/;"	kind:member	line:109
-summary_scalar	../net.py	/^	def summary_scalar(self, metrics):$/;"	kind:member	line:105
-timeit	../utils.py	/^def timeit(f):$/;"	kind:function	line:24
-to_numpy	../net.py	/^		def to_numpy(imgs):$/;"	kind:function	line:110
-to_var	../net.py	/^		def to_var(t):$/;"	kind:function	line:96
-train	../net.py	/^	def train(self, train_loader, validate_loader, epochs):$/;"	kind:member	line:39
+summary_image	../net.py	/^    def summary_image(self, output, target, prefix):$/;"	kind:member	line:145
+summary_scalar	../net.py	/^    def summary_scalar(self, metrics):$/;"	kind:member	line:141
+timeit	../utils.py	/^def timeit(f):$/;"	kind:function	line:27
+to_numpy	../net.py	/^        def to_numpy(imgs):$/;"	kind:function	line:146
+to_point	../stage2_utils/edge.py	/^    def to_point(pt):$/;"	kind:function	line:7
+to_var	../net.py	/^        def to_var(t):$/;"	kind:function	line:125
+train	../net.py	/^    def train(self, train_loader, validate_loader, epochs):  		$/;"	kind:member	line:38
 train.py	../train.py	1;"	kind:file	line:1
-transform	../dataset.py	/^	transform = transforms.Compose([$/;"	kind:variable	line:81
+transform	../stage1_utils/dataset.py	/^	transform = transforms.Compose([$/;"	kind:variable	line:81
+transform	../stage2_utils/lsun_dataset.py	/^    transform = transforms.Compose([$/;"	kind:variable	line:15
+type0	../stage2_utils/edge.py	/^def type0(e, **kwargs):$/;"	kind:function	line:25
+type0	../stage2_utils/label.py	/^def type0(e):$/;"	kind:function	line:17
+type1	../stage2_utils/edge.py	/^def type1(e, **kwargs):$/;"	kind:function	line:33
+type1	../stage2_utils/label.py	/^def type1(e):$/;"	kind:function	line:27
+type10	../stage2_utils/edge.py	/^def type10(e, **kwargs):$/;"	kind:function	line:78
+type10	../stage2_utils/label.py	/^def type10(e):$/;"	kind:function	line:101
+type2	../stage2_utils/edge.py	/^def type2(e, **kwargs):$/;"	kind:function	line:38
+type2	../stage2_utils/label.py	/^def type2(e):$/;"	kind:function	line:37
+type3	../stage2_utils/edge.py	/^def type3(e, **kwargs):$/;"	kind:function	line:43
+type3	../stage2_utils/label.py	/^def type3(e):$/;"	kind:function	line:46
+type4	../stage2_utils/edge.py	/^def type4(e, **kwargs):$/;"	kind:function	line:48
+type4	../stage2_utils/label.py	/^def type4(e):$/;"	kind:function	line:54
+type5	../stage2_utils/edge.py	/^def type5(e, **kwargs):$/;"	kind:function	line:53
+type5	../stage2_utils/label.py	/^def type5(e):$/;"	kind:function	line:62
+type6	../stage2_utils/edge.py	/^def type6(e, **kwargs):$/;"	kind:function	line:58
+type6	../stage2_utils/label.py	/^def type6(e):$/;"	kind:function	line:71
+type7	../stage2_utils/edge.py	/^def type7(e, **kwargs):$/;"	kind:function	line:63
+type7	../stage2_utils/label.py	/^def type7(e):$/;"	kind:function	line:79
+type8	../stage2_utils/edge.py	/^def type8(e, **kwargs):$/;"	kind:function	line:68
+type8	../stage2_utils/label.py	/^def type8(e):$/;"	kind:function	line:87
+type9	../stage2_utils/edge.py	/^def type9(e, **kwargs):$/;"	kind:function	line:73
+type9	../stage2_utils/label.py	/^def type9(e):$/;"	kind:function	line:94
+type_accuracy	../net.py	/^	def type_accuracy(self, output, target):$/;"	kind:member	line:208
+type_loss	../net.py	/^	def type_loss(self, type_dis, room_type):$/;"	kind:member	line:277
 utils.py	../utils.py	1;"	kind:file	line:1
-wrap	../utils.py	/^	def wrap(*args, **kw):$/;"	kind:function	line:26
+wrap	../utils.py	/^	def wrap(*args, **kw):$/;"	kind:function	line:29
