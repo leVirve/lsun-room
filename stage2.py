@@ -35,7 +35,7 @@ def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
 
 	net = Stage_Net(name='stage2_ResFCN', pretrained=False, stage_2=True, joint_class=True, type_portion=0.1, edge_portion=0.1)
 
-	pretrain_dict = torch.load('/home/cvlab/Documents/lsun-room/stage1/output/weight/Res101FCN16s_3/20.pth')
+	pretrain_dict = torch.load('/home/cvlab/Documents/torch/SemanticTransfer/output/weight/Res101FCN16s_3/20.pth')
 	model_dict = net.model.state_dict()
 	pretrained_dict = {k:v for k, v in pretrain_dict.items() if k in model_dict}
 	model_dict.update(pretrained_dict)

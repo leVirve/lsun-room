@@ -101,9 +101,9 @@ class Stage_Net():
                     loss, loss_term, acc, output = self.forward(data[0], data[1], data[2], data[3], is_eval=True)
                     hist.add(loss, loss_term, acc)
                     if i == 0 & self.joint_class:
-                        self.summary_image(output[0].data, target, prefix)
+                        self.summary_image(output[0].data, data[1], prefix)
                     elif i == 0 & self.joint_class == False:
-                        self.summary_image(output.data, target, prefix)
+                        self.summary_image(output.data, data[1], prefix)
 
         return hist.metric(prefix=prefix)
 
@@ -129,12 +129,12 @@ class Stage_Net():
                 image, target, room_type = to_var(image), to_var(target), to_var(room_type.long())
                 output = self.model(image)
                 loss, loss_term = self.criterion(output, target, edge_map, room_type)
-                acc = self.accuracy(output, target, self.joint_class)
+                acc = self.accuracy(output, target, room_type, self.joint_class)
         else:
                 image, target = to_var(image), to_var(target)
                 output = self.model(image)
                 loss, loss_term = self.criterion(output, target, None, None)
-                acc = self.accuracy(output, target, room_type, self.joint_class)
+                acc = self.accuracy(output, target, self.joint_class)
 
         return (loss, loss_term, acc, output) if is_eval else (loss, loss_term, acc)
 
