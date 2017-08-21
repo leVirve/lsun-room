@@ -1,63 +1,75 @@
 import click
-import numpy as np
-
 import torch
-from torch.autograd import Variable
-from tqdm import tqdm
 
-import config as cfg
-from lsun_room import Phase
 from dataset import ImageFolderDataset
-from fcn import FCN, cross_entropy2d, sparse_pixelwise_accuracy
+from net import *
 
+torch.backends.cudnn.benchmark = True
 
 @click.command()
+@click.option('--name', type=str)
+@click.option('--dataset_root', default='../SemanticTransfer')
+@click.option('--image_size', default=(404, 404), type=(int, int))
+@click.option('--epochs', default=20, type=int)
+@click.option('--batch_size', default=1, type=int)
+@click.option('--workers', default=6, type=int)
 @click.option('--resume', type=click.Path(exists=True))
-def main(resume):
+def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
 
-    print('===> Loading dataset')
-    train_dataset = ImageFolderDataset(
-        root=cfg.dataset_root,
-        target_size=(cfg.size, cfg.size),
-        phase=Phase.TRAIN)
+	print('===> Prepare data loader')
+	dataset_args = {'root':dataset_root, 'target_size': image_size}
+	loader_args = {'num_workers': workers, 'pin_memory': True}
 
-    print('===> Prepare data loader')
-    train_loader = torch.utils.data.DataLoader(
-        dataset=train_dataset,
-        batch_size=cfg.batch_size,
-        num_workers=cfg.workers,
-        pin_memory=True,
-        shuffle=True)
+	train_loader = torch.utils.data.DataLoader(
+		dataset=ImageFolderDataset(phase='train', **dataset_args),
+		batch_size=batch_size, shuffle=True, **loader_args
+		)
+	validate_loader = torch.utils.data.DataLoader(
+		dataset=ImageFolderDataset(phase='validate', **dataset_args),
+		batch_size=batch_size, **loader_args
+		)
+	test_loader = torch.utils.data.DataLoader(
+		dataset=ImageFolderDataset(phase='test', **dataset_args),
+		batch_size=batch_size, **loader_args
+		)
 
-    print('===> Prepare model')
-    model = FCN(num_classes=5).cuda()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+	print('===> Prepare model')
 
-    print('===> Start training')
-    losses = np.zeros(len(train_loader))
-    accuracies = np.zeros(len(train_loader))
-    for epoch in range(1, cfg.epochs + 1):
-        epoch_range = tqdm(train_loader)
-        for i, (img, lbl) in enumerate(epoch_range):
-            optimizer.zero_grad()
+	net = Stage_Net(name='FCN32s-1', pretrained=True)
+	print('===> Start training')
+	net.train(train_loader=train_loader,
+		validate_loader=validate_loader,
+		epochs=epochs)
+	net.evaluate(data_loader=validate_loader, prefix='')
+	net.predict(data_loader=test_loader, name='FCN32s_seg_layout')
 
-            pred = model(Variable(img).cuda())
-            loss = cross_entropy2d(pred, Variable(lbl).cuda())
+def stage_two(name, dataset_root, image_size, epochs, batch_size, workers, resume):
 
-            loss.backward()
-            optimizer.step()
+	print('===> Prepare data loader')
+	dataset_args = {'root':dataset_root, 'target_size': image_size}
+	loader_args = {'num_workers': workers, 'pin_memory': True}
 
-            accuracy = sparse_pixelwise_accuracy(pred, lbl.cuda())
+	train_loader = torch.utils.data.DataLoader(
+		dataset=ImageFolderDataset(phase='train', **dataset_args),
+		batch_size=batch_size, shuffle=True, **loader_args
+		)
+	validate_loader = torch.utils.data.DataLoader(
+		dataset=ImageFolderDataset(phase='validate', **dataset_args),
+		batch_size=batch_size, **loader_args
+		)
+	test_loader = torch.utils.data.DataLoader(
+		dataset=ImageFolderDataset(phase='test', **dataset_args),
+		batch_size=batch_size, **loader_args
+		)
 
-            losses[i], accuracies[i] = loss.data[0], accuracy
-            avg_loss = np.mean(losses[losses > 0])
-            avg_accuracy = np.mean(accuracies[accuracies > 0])
+	print('===> Prepare model')
 
-            epoch_range.set_description('Epoch# %i' % epoch)
-            epoch_range.set_postfix(
-                loss=loss.data[0], accuracy=accuracy,
-                avg_loss=avg_loss, avg_accuracy=avg_accuracy)
-
-
+	net = Stage_Net(name='FCN32s-1', pretrained=True)
+	print('===> Start training')
+	net.train(train_loader=train_loader,
+		validate_loader=validate_loader,
+		epochs=epochs)
+	net.evaluate(data_loader=validate_loader, prefix='')
+#	net.predict(data_loader=test_loader, name='FCN32s_seg_layout')
 if __name__ == '__main__':
-    main()
+	main()

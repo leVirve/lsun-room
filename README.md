@@ -1,44 +1,20 @@
-# LSUN Room Layout Dataset Tool
+# Room Layout Estimation with Semantic Transfer 
 
-## Prerequisite
+## Stage1
+    Train Model on SUNRGBD dataset for semantic segmentation
+    Path: Add the dataset under this path -- ../data/stage1_data/
+    Dataset Content: image and label folder, train-val split is recorded in thte two txt files located in  /stage1_utils
 
-- Python 3.5+
+    Training command line: python stage1.py
 
-## Submodules
+## Stage2
+    Train Model on LSUN RGBD dataset for semantic transfer 
+    Path: Add the dataset under the path of -- ../data/ 
+    Dataset Content: images folder, layout_seg_images folder along with testing.mat, training.mat, validation.mat 
+        - Images: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/image.zip 
+        - Training.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/training.mat 
+        - Validation.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/validation.mat 
+        - Testing.mat: http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/testing.mat 
+        - Layout_seg_images: Room Layout semantic representation is contributed by LeVrive 
 
-- `fcn_models/` from [weering/room_segmodel](https://bitbucket.org/weering/room_segmodel) @Bitbucket, mostly contributed by Michael.
-
-## Installation
-
-- Clone this project
-  ```bash
-  git clone --recursive https://github.com/leVirve/lsun-room
-  ```
-
-- Updata `fcn_models`
-  ```bash
-  git submodule update --recursive --remote
-  ```
-
-## Tools
-
-- Training
-  - Put your `LSUN Room Layout` dataset in folder `../data/` relative to this project.
-
-  ```bash
-  python train.py
-  ```
-
-- Re-label
-
-  - Output visualized layout image (range from 0-255)
-
-  ```bash
-  python script/re_label.py --visualized
-  ```
-
-  - Output layout image (range from 1-5)
-
-  ```bash
-  python script/re_label.py
-  ```
+    Training command line: python stage2.py

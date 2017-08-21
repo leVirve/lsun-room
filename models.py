@@ -1,317 +1,207 @@
-from keras.models import Model, Sequential, load_model
-from keras.layers import Input, Dropout, Permute, Add, add
-from keras.layers import Conv2D, ZeroPadding2D, MaxPooling2D, Conv2DTranspose, Cropping2D
-from keras.layers.core import Reshape, Flatten, Activation
-from keras.utils.data_utils import get_file
-from keras.layers.normalization import BatchNormalization
-from keras.layers import Activation
-from keras.regularizers import l1,l2
-from keras.layers.core import ActivityRegularization
-from keras.initializers import RandomUniform
-from resnet_blocks import *
-from cropping import *
+from Resnet_blocks import *
+import math
 
-VGG_WEIGHTS_PATH_NO_TOP = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.1/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5'
-RES_WEIGHTS_PATH_NO_TOP = 'https://github.com/fchollet/deep-learning-models/releases/download/v0.2/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
+def build_resnet101_FCN(pretrained=False, nb_classes=None, stage_2=False, joint_class=False):
 
-def _crop(target_layer, offset=(None, None), name=None):
-    """Crop the bottom such that it has the same shape as target_layer."""
-    def f(input):
-        width = input._keras_shape[1]
-        height = input._keras_shape[2]
-        target_width = target_layer._keras_shape[1]
-        target_height = target_layer._keras_shape[2]
-        cropped = Cropping2D(cropping=((offset[0], width - offset[0] - target_width),(offset[1],height - offset[1] - target_height)), name='{}'.format(name))(input)
-        return cropped
-    return f
+	model = ResNet(Bottleneck, [3,4,23,3], num_classes=nb_classes, stage_2=stage_2, joint_class=joint_class)
+	if pretrained:
+		pretrain_dict = model_zoo.load_url(model_urls['resnet101'])
+		
+		model_dict = model.state_dict()
+		pretrained_dict = {k:v for k, v in pretrain_dict.items() if k in model_dict}
+		model_dict.update(pretrained_dict)
+		model.load_state_dict(model_dict)
 
-def fcn_vggbase(input_shape=(None,None,3)):
-    
-    img_input = Input(shape=input_shape)
-    x = ZeroPadding2D(padding=(100, 100), name='pad1')(img_input)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(x)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='same', name='block1_pool')(x)
+	return model
 
-    # Block 2
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block2_pool')(x)
+class ResNet(nn.Module):
 
-    # Block 3
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block3_pool')(x)
+	def __init__(self, block, layers, num_classes=37, num_rtype=11, stage_2=False, joint_class=False):
+		self.stage_2 = stage_2
+		self.joint_class = joint_class
+		self.inplanes = 64
+		super(ResNet, self).__init__()
+		self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
+			   bias=False)
+		self.bn1 = nn.BatchNorm2d(64)
+		self.relu = nn.ReLU(inplace=True)
+		self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+		self.layer1 = self._make_layer(block, 64, layers[0])
+		self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+		self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+		self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+		self.avgpool = nn.AvgPool2d(7)
+		self.type_fc = nn.Linear(512*block.expansion, num_rtype)
 
-    # Block 4
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block4_pool')(x)
+		self.dp1 = nn.Dropout(p=0.85)
+		self.fc_conv = nn.Conv2d(2048, 2048, kernel_size=1, stride=1, bias=False)
+		self.bn2 = nn.BatchNorm2d(2048)
+		self.dp2 = nn.Dropout(p=0.85)
 
-    # Block 5
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same',name='block5_pool')(x)
+		self.classifier = nn.Conv2d(2048, num_classes, kernel_size=1, stride=1, bias=False)
+		self.upscore = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=4, stride=2, bias=False)
 
-    x = Conv2D(filters=4096, kernel_size=(7, 7), W_regularizer=l2(0.00005), activation='relu', padding='valid', name='fc6_lsun')(x)
-    x = Dropout(0.85)(x)
-    x = Conv2D(filters=4096, kernel_size=(1, 1), W_regularizer=l2(0.00005), activation='relu', padding='valid', name='fc7_lsun')(x)
-    x = Dropout(0.85)(x)
-    x = Conv2D(filters=5, kernel_size=(1, 1), strides=(1,1), kernel_initializer='he_normal', padding='valid', name='lsun_score')(x)
+		self.score_l4 = nn.Conv2d(2048, num_classes, kernel_size=1, stride=1,bias=False)
+		self.upscore_l4 = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=4, stride=2, bias=False)
 
-    x = Conv2DTranspose(filters=5, kernel_initializer='he_normal', kernel_size=(64, 64), strides=(32, 32), padding='valid',use_bias=False, name='lsun_upscore2')(x)
-    output = _crop(img_input,offset=(32,32), name='score')(x)
+		self.score_l3 = nn.Conv2d(1024, num_classes, kernel_size=1, stride=1,  padding=1, bias=False)
+		self.upscore_l3 = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=32, stride=16, bias=False)
+		self.fc = nn.Conv2d(37, 5, kernel_size=1, stride=1, bias=False)
 
-    model = Model(img_input, output)
-    weights_path = get_file('vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', VGG_WEIGHTS_PATH_NO_TOP, cache_subdir='models')
-    model.load_weights(weights_path, by_name=True)
+		for m in self.modules():
+			if isinstance(m, nn.Conv2d):
+				n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+				m.weight.data.normal_(0, math.sqrt(2. / n))
+			elif isinstance(m, nn.BatchNorm2d):
+				m.weight.data.fill_(1)
+				m.bias.data.zero_()
 
-    return model
+	def _make_layer(self, block, planes, blocks, stride=1):
+		downsample = None
+		if stride != 1 or self.inplanes != planes * block.expansion:
+			downsample = nn.Sequential(
+		nn.Conv2d(self.inplanes, planes * block.expansion,
+		  kernel_size=1,stride=stride, bias=False),  
+		nn.BatchNorm2d(planes * block.expansion),
+			)
 
-def fcn16s_vggbase(input_shape=None, nb_class=None):
-    img_input = Input(shape=input_shape)
-    x = ZeroPadding2D(padding=(100, 100), name='pad1')(img_input)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(x)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='same', name='block1_pool')(x)
-          
-    # Block 2
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block2_pool')(x)
-         
-    # Block 3
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block3_pool')(x)
-         
-    # Block 4
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block4_pool')(x)
-    pool4 = x
+		layers = []
+		layers.append(block(self.inplanes, planes, stride, downsample))
+		self.inplanes = planes * block.expansion
+		for i in range(1, blocks):
+			layers.append(block(self.inplanes, planes))
 
-    # Block 5
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same',name='block5_pool')(x)
-    
-    x = Conv2D(filters=4096, kernel_size=(7, 7), W_regularizer=l2(0.00005), activation='relu', padding='valid', name='fc6')(x)
-    x = Dropout(0.85)(x)
-    x = Conv2D(filters=4096, kernel_size=(1, 1), W_regularizer=l2(0.00005), activation='relu', padding='valid', name='fc7')(x)
-    x = Dropout(0.85)(x)
-    x = Conv2D(filters=nb_class, kernel_size=(1, 1), strides=(1,1), kernel_initializer='he_normal', padding='valid', name='p5score')(x)
-    x = Conv2DTranspose(filters=nb_class, kernel_size=(4,4), strides=(2,2), kernel_initializer='he_normal', padding='valid', name='p5upscore')(x)
+		return nn.Sequential(*layers)
 
-    pool4 = Conv2D(filters=nb_class, kernel_size=(1,1), kernel_initializer='he_normal', padding='valid', name='pool4_score')(pool4)
-    pool4_score = _crop(x, offset=(5,5), name='pool4_score2')(pool4)
-    m = merge([pool4_score,x], mode='sum')
-    upscore = Conv2DTranspose(filters=nb_class, kernel_size=(32,32), strides=(16,16), padding='valid', name='merged_score')(m)
-    score = _crop(img_input, offset=(27,27), name='output_score')(upscore)
+	def forward(self, x):
+		in_ = x
+		x = self.conv1(in_)
+		x = self.bn1(x)
+		x = self.relu(x)
+		x = self.maxpool(x)
 
-    weights_path = get_file('vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', VGG_WEIGHTS_PATH_NO_TOP, cache_subdir='models')
-    mdl = Model(img_input, score, name='fcn16s')
-    mdl.load_weights(weights_path, by_name=True)
+		x = self.layer1(x)
+		x = self.layer2(x)
+		x3 = self.layer3(x)
+		x4 = self.layer4(x3)
+		p4 = self.maxpool(x4)
+#		p2 = self.avgpool(x4)
+		if self.joint_class == True:
+			avg_p = self.avgpool(x4)
+			type_x = avg_p.view(avg_p.size(0), -1)
+			type_x = self.type_fc(type_x)
 
-    return mdl
+		x = self.dp1(p4)
+		x = self.fc_conv(x)
+		x = self.bn2(x)
+		x = self.relu(x)
+		x = self.dp2(x)
+		x = self.classifier(x)
 
-def fcn_Resnet50(input_shape = None, weight_decay=0.0002, batch_momentum=0.9, batch_shape=None, classes=40):
+		upscore = self.upscore(x)
+		score_l4 = self.score_l4(x4)
+		upscore = upscore[:, :, 1:1+score_l4.size()[2], 1:1+score_l4.size()[3]].contiguous()
+		upscore_l4 = self.upscore_l4(score_l4+upscore)
 
-    img_input = Input(shape=input_shape)
-    bn_axis = 3
-
-    x = Conv2D(64, kernel_size=(7,7), subsample=(2, 2), border_mode='same', name='conv1', W_regularizer=l2(weight_decay))(img_input)
-    x = BatchNormalization(axis=bn_axis, name='bn_conv1')(x)
-    x = Activation('relu')(x)
-    x = MaxPooling2D((3, 3), strides=(2, 2))(x)
-
-    x = conv_block(3, [64, 64, 256], stage=2, block='a', strides=(1, 1))(x)
-    x = identity_block(3, [64, 64, 256], stage=2, block='b')(x)
-    x = identity_block(3, [64, 64, 256], stage=2, block='c')(x)
-
-    x = conv_block(3, [128, 128, 512], stage=3, block='a')(x)
-    x = identity_block(3, [128, 128, 512], stage=3, block='b')(x)
-    x = identity_block(3, [128, 128, 512], stage=3, block='c')(x)
-    x = identity_block(3, [128, 128, 512], stage=3, block='d')(x)
-
-    x = conv_block(3, [256, 256, 1024], stage=4, block='a')(x)
-    x = identity_block(3, [256, 256, 1024], stage=4, block='b')(x)
-    x = identity_block(3, [256, 256, 1024], stage=4, block='c')(x)
-    x = identity_block(3, [256, 256, 1024], stage=4, block='d')(x)
-    x = identity_block(3, [256, 256, 1024], stage=4, block='e')(x)
-    x = identity_block(3, [256, 256, 1024], stage=4, block='f')(x)
-
-    x = conv_block(3, [512, 512, 2048], stage=5, block='a')(x)
-    x = identity_block(3, [512, 512, 2048], stage=5, block='b')(x)
-    x = identity_block(3, [512, 512, 2048], stage=5, block='c')(x)
-    #classifying layer
-    x = Conv2D(filters=40, kernel_size=(1,1), strides=(1,1), init='he_normal', activation='linear', border_mode='valid', W_regularizer=l2(weight_decay))(x)
-
-    x = Conv2DTranspose(filters=40, kernel_initializer='he_normal', kernel_size=(64, 64), strides=(32, 32), padding='valid',use_bias=False, name='upscore2')(x)
-    x = Cropping2D(cropping=((19, 36),(19, 29)), name='score')(x)
-
-    model = Model(img_input, x)
-    weights_path = get_file('resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5', RES_WEIGHTS_PATH_NO_TOP, cache_subdir='models')
-    model.load_weights(weights_path, by_name=True)
-    
-    return model
-
-def dilated_FCN_addmodule(input_shape=None):
-    img_input = Input(shape=input_shape)
-    x = ZeroPadding2D(padding=(100, 100), name='pad1')(img_input)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(x)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='same', name='block1_pool')(x)
-
-    # Block 2
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block2_pool')(x)
-
-    # Block 3
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block3_pool')(x)
-
-    # Block 4
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block4_pool')(x)
-
-    # Block 5
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same',name='block5_pool')(x)
-
-    x = Conv2D(filters=4096, kernel_initializer='he_normal', kernel_size=(7, 7), activation='relu', padding='valid', name='fc6')(x)
-    x = Dropout(0.85)(x)
-    x = Conv2D(filters=4096, kernel_initializer='he_normal', kernel_size=(1, 1), activation='relu', padding='valid', name='fc7')(x)
-    x = Dropout(0.85)(x)
-    x = Conv2D(filters=40,kernel_size=(1, 1), strides=(1,1), kernel_initializer='he_normal', padding='valid', name='score_fr')(x)
-    #x = Cropping2D(cropping=((19, 36),(19, 29)), name='score')(x)
-    x = ZeroPadding2D(padding=(33,33))(x)
-    x = Conv2D(2*40, (3,3), kernel_initializer='he_normal',activation='relu', name='dl_conv1')(x)
-    x = Conv2D(2*40, (3,3), kernel_initializer='he_normal',activation='relu', name='dl_conv2')(x)
-    x = Conv2D(4*40, (3,3), kernel_initializer='he_normal',dilation_rate=(2,2), activation='relu', name='dl_conv3')(x)
-    x = Conv2D(8*40, (3,3), kernel_initializer='he_normal',dilation_rate=(4,4), activation='relu', name='dl_conv4')(x)
-    x = Conv2D(16*40, (3,3), kernel_initializer='he_normal',dilation_rate=(8,8), activation='relu', name='dl_conv5')(x)
-    x = Conv2D(32*40, (3,3), kernel_initializer='he_normal',dilation_rate=(16,16), activation='relu', name='dl_conv6')(x)
-    x = Conv2D(32*40, (1,1), kernel_initializer='he_normal',name='dl_conv7')(x)
-    x = Conv2D(1*40, (1,1), kernel_initializer='he_normal',name='dl_final')(x)
-    x = Conv2DTranspose(filters=40, kernel_initializer='he_normal', kernel_size=(64, 64), strides=(32, 32), padding='valid',use_bias=False, name='upscore2')(x)
-    x = CroppingLike2D(img_input, offset='centered', name='score')(x)
-
-    mdl = Model(img_input, x, name='dilatedmoduleFCN')
-    #weights_path = get_file('vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', VGG_WEIGHTS_PATH_NO_TOP, cache_subdir='models')
-    mdl.load_weights('logs/model_June13_sgd_60kitr.h5', by_name=True)
-    return mdl
-
-def dilated_FCN_frontended(input_shape=None, weight_decay=None, nb_classes=40):
-
-    img_input = Input(shape=input_shape)
-
-    #x = ZeroPadding2D(padding=(100, 100), name='pad1')(img_input)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1')(img_input)
-    x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='same', name='block1_pool')(x)
-
-    # Block 2
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1')(x)
-    x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block2_pool')(x)
-
-    # Block 3
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), padding='same', name='block3_pool')(x)
-
-    # Block 4
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
-    
-    x = Conv2D(512, (3,3), dilation_rate=(2,2), activation='relu', name='block5_conv1')(x)
-    x = Conv2D(512, (3,3), dilation_rate=(2,2), activation='relu', name='block5_conv2')(x)
-    x = Conv2D(512, (3,3), dilation_rate=(2,2), activation='relu', name='block5_conv3')(x)
-    
-    x = Conv2D(4096, (3,3), kernel_initializer='he_normal', dilation_rate=(4,4), activation='relu', name='fc6')(x)
-    x = Dropout(0.5, name='drop6')(x)
-    x = Conv2D(4096, (1,1), kernel_initializer='he_normal', activation='relu', name='fc7')(x)
-    x = Dropout(0.5, name='drop7')(x)
-    x = Conv2D(nb_classes, (1,1), kernel_initializer='he_normal', activation='relu', name='fc_final')(x)
-    
-
-    #x = Conv2DTranspose(nb_classes, kernel_size=(64,64), strides=(32,32), padding='valid', name='upscore2')(x)    
-    x = ZeroPadding2D(padding=(33,33))(x)
-    x = Conv2D(2*nb_classes, (3,3), kernel_initializer='he_normal',activation='relu', name='dl_conv1')(x)
-    x = Conv2D(2*nb_classes, (3,3), kernel_initializer='he_normal',activation='relu', name='dl_conv2')(x)
-    x = Conv2D(4*nb_classes, (3,3), kernel_initializer='he_normal',dilation_rate=(2,2), activation='relu', name='dl_conv3')(x)
-    x = Conv2D(8*nb_classes, (3,3), kernel_initializer='he_normal',dilation_rate=(4,4), activation='relu', name='dl_conv4')(x)
-    x = Conv2D(16*nb_classes, (3,3), kernel_initializer='he_normal',dilation_rate=(8,8), activation='relu', name='dl_conv5')(x)
-    x = Conv2D(32*nb_classes, (3,3), kernel_initializer='he_normal',dilation_rate=(16,16), activation='relu', name='dl_conv6')(x)
-    x = Conv2D(32*nb_classes, (1,1), kernel_initializer='he_normal',name='dl_conv7')(x)
-    x = Conv2D(1*nb_classes, (1,1), kernel_initializer='he_normal',name='dl_final')(x)
-    x = Conv2DTranspose(nb_classes, kernel_initializer='he_normal', kernel_size=(64,64), strides=(8,8), padding='valid', name='upscore2')(x)
-    x = CroppingLike2D(img_input, offset='centered', name='score')(x)
-    #x = Cropping2D(cropping=((19,36), (19,29)), name='score')(x)
-   
-
-    mdl = Model(input=img_input, output=x, name='dilated_fcn')
-    weights_path = get_file('vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', VGG_WEIGHTS_PATH_NO_TOP, cache_subdir='models')
-    mdl.load_weights(weights_path, by_name=True)
-    return mdl
-
-def dilat_fets(input_shape=None, classes=40):
-    
-    model_in = Input(shape=input_shape)
-    h = Convolution2D(64, 3, 3, activation='relu', name='conv1_1')(model_in)
-    h = Convolution2D(64, 3, 3, activation='relu', name='conv1_2')(h)
-    h = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool1')(h)
-    
-    h = Convolution2D(128, 3, 3, activation='relu', name='conv2_1')(h)
-    h = Convolution2D(128, 3, 3, activation='relu', name='conv2_2')(h)
-    h = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool2')(h)
-    
-    h = Convolution2D(256, 3, 3, activation='relu', name='conv3_1')(h)
-    h = Convolution2D(256, 3, 3, activation='relu', name='conv3_2')(h)
-    h = Convolution2D(256, 3, 3, activation='relu', name='conv3_3')(h)
-    h = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool3')(h)
-    
-    h = Convolution2D(512, 3, 3, activation='relu', name='conv4_1')(h)
-    h = Convolution2D(512, 3, 3, activation='relu', name='conv4_2')(h)
-    h = Convolution2D(512, 3, 3, activation='relu', name='conv4_3')(h)
-    
-    h = AtrousConvolution2D(512, 3, 3, dilation_rate=(2, 2), activation='relu', name='conv5_1')(h)
-    h = AtrousConvolution2D(512, 3, 3, dilation_rate=(2, 2), activation='relu', name='conv5_2')(h)
-    h = AtrousConvolution2D(512, 3, 3, dilation_rate=(2, 2), activation='relu', name='conv5_3')(h)
-    
-    h = AtrousConvolution2D(4096, 7, 7, dilation_rate=(4, 4), activation='relu', name='fc6')(h)
-    h = Dropout(0.5, name='drop6')(h)
-    h = Convolution2D(4096, 1, 1, activation='relu', name='fc7')(h)
-    h = Dropout(0.5, name='drop7')(h)
-    h = Convolution2D(classes, 1, 1, activation='relu', name='fc-final')(h)
-    
-    h = ZeroPadding2D(padding=(33, 33))(h)
-    
-    h = Convolution2D(2 * classes, 3, 3, activation='relu', name='ct_conv1_1')(h)
-    h = Convolution2D(2 * classes, 3, 3, activation='relu', name='ct_conv1_2')(h)
-    h = AtrousConvolution2D(4 * classes, 3, 3, dilation_rate=(2, 2), activation='relu', name='ct_conv2_1')(h)
-    h = AtrousConvolution2D(8 * classes, 3, 3, dilation_rate=(4, 4), activation='relu', name='ct_conv3_1')(h)
-    h = AtrousConvolution2D(16 * classes, 3, 3, dilation_rate=(8, 8), activation='relu', name='ct_conv4_1')(h)
-    h = AtrousConvolution2D(32 * classes, 3, 3, dilation_rate=(16, 16), activation='relu', name='ct_conv5_1')(h)
-    h = Convolution2D(32 * classes, 3, 3, activation='relu', name='ct_fc1')(h)
-    h = Convolution2D(classes, 1, 1, name='ct_final')(h)
+		score_l3 = self.score_l3(x3)
+		upscore_l3 = self.upscore_l3(upscore_l4+score_l3)
+		out = upscore_l3[:, :, 27:27+in_.size()[2], 27:27+in_.size()[3]].contiguous()
+		if self.stage_2 == True:
+				out_stage2 = self.fc(out)
+				if self.joint_class == True:
+    					return out_stage2, type_x 
+				else: 
+						return out_stage2
+		else:
+    			return out
 
 
-    model = Model(input=model_in, output=logits, name='dilation_voc12')
-    return model
+class FCN(nn.Module):
+	def __init__(self, pretrained=True, num_classes=37, stage_2=False):
+		super(FCN, self).__init__()
+		self.pretrained = pretrained
+		self.stage_2 = stage_2
+		self.features = nn.Sequential(
+		# conv1
+			nn.Conv2d(3, 64, 3, padding=100),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(64, 64, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.MaxPool2d(2, stride=2, ceil_mode=True),  # 1/2
+
+			# conv2
+			nn.Conv2d(64, 128, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(128, 128, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.MaxPool2d(2, stride=2, ceil_mode=True),  # 1/4
+
+			# conv3
+			nn.Conv2d(128, 256, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(256, 256, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(256, 256, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.MaxPool2d(2, stride=2, ceil_mode=True),  # 1/8
+
+			# conv4
+			nn.Conv2d(256, 512, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(512, 512, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(512, 512, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.MaxPool2d(2, stride=2, ceil_mode=True),  # 1/16
+
+			# conv5
+			nn.Conv2d(512, 512, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(512, 512, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(512, 512, 3, padding=1),
+			nn.ReLU(inplace=True),
+			nn.MaxPool2d(2, stride=2, ceil_mode=True),  # 1/32
+		)
+		self.classifier = nn.Sequential(
+			# fc6
+			nn.Conv2d(512, 4096, 7),
+			nn.ReLU(inplace=True),
+			nn.Dropout2d(),
+
+			# fc7
+			nn.Conv2d(4096, 4096, 1),
+			nn.ReLU(inplace=True),
+			nn.Dropout2d(),
+
+			# score_fr
+			nn.Conv2d(4096, num_classes, 1),
+			)
+		self.upscore = nn.ConvTranspose2d(num_classes, num_classes, 64, stride=32, bias=False)
+		self.fc = nn.Conv2d(num_classes, 5, kernel_size=1, stride=1, bias=False)
+		#self._initialize_weights()
+
+#	@timeit
+	def _initialize_weights(self):
+		vgg16 = torchvision.models.vgg16(pretrained=True)
+
+		for m in self.modules():
+			if isinstance(m, nn.ConvTranspose2d):
+				m.weight.data = weight_init.kaiming_normal(m.weight.data)
+		for a, b in zip(vgg16.features, self.features):
+			if (isinstance(a, nn.Conv2d) and isinstance(b, nn.Conv2d)):
+				b.weight.data = a.weight.data
+				b.bias.data = a.bias.data
+		for i in [0, 3]:
+			a, b = vgg16.classifier[i], self.classifier[i]
+			b.weight.data = a.weight.data.view(b.weight.size())
+			b.bias.data = a.bias.data.view(b.bias.size())
+
+	def forward(self, x):
+		x = self.features(x)
+		x = self.classifier(x)
+		x = self.upscore(x)
+		x = x[:, :, 44:44 + x.size()[2], 44:44 + x.size()[3]].contiguous()
+		if self.stage_2 == True:
+			x = self.fc(x)
+		return x

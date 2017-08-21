@@ -1,5 +1,9 @@
+__pycache__/
+*.py[cod]
+
 .ipynb_checkpoints/
 .vscode/
+output/
 logs/
-*.pyc
+
 *.log

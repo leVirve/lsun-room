@@ -1,12 +1,13 @@
 import os
 
 import numpy as np
-
 import cv2
 import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
-from lsun_room import Dataset, Phase
+
+from stage2_utils.data import DataItems
+from stage2_utils.edge import mapping_func
 
 
 class ImageFolderDataset(dset.ImageFolder):
@@ -17,15 +18,15 @@ class ImageFolderDataset(dset.ImageFolder):
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    def __init__(self, root, target_size, phase=Phase.TRAIN):
+    def __init__(self, root, target_size, phase):
         self.target_size = target_size
-        self.dataset = Dataset(root_dir=root, phase=phase)
+        self.dataset = DataItems(root_dir=root, phase=phase)
         self.filenames = [e.name for e in self.dataset.items]
 
     def __getitem__(self, index):
-        return self.load(self.filenames[index])
+        return self.load(self.filenames[index], index)
 
-    def load(self, name):
+    def load(self, name, index):
         image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
         label_path = os.path.join(self.dataset.layout_image, '%s.png' % name)
 
@@ -37,9 +38,17 @@ class ImageFolderDataset(dset.ImageFolder):
 
         img = self.transform(img)
         lbl = np.clip(lbl, 1, 5) - 1
-        lbl = torch.from_numpy(np.expand_dims(lbl, axis=0)).long()
+        lbl = torch.from_numpy(lbl).long()
 
-        return img, lbl
+        edge = torch.from_numpy(self.load_edge_map(index)/255).long()
+        room_type = self.dataset.items[index].type
+
+        return img, lbl, edge, room_type
+
+    def load_edge_map(self, index):
+        e = self.dataset.items[index]
+        edge_map = mapping_func(e.type)
+        return edge_map(e, image_size=self.target_size, width=2)
 
     def __len__(self):
         return len(self.filenames)

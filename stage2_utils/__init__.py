@@ -1,4 +1,4 @@
-from lsun_room.dataset import Dataset  # noqa
+from stage2_utils.data import *  # noqa
 
 
 class Phase:

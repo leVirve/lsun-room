@@ -1,9 +1,8 @@
 import os
-
 import numpy as np
 
-from lsun_room.label import mapping_func
-from lsun_room.utils import load_mat, load_image, save_image
+from stage2_utils.label import mapping_func
+from utils import load_mat, load_image, save_image
 
 
 class Item():
@@ -54,7 +53,7 @@ class Item():
         return '<DataItem: %s>' % self.name
 
 
-class Dataset():
+class DataItems():
 
     def __init__(self, root_dir, phase):
         self.root_dir = root_dir
