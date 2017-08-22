@@ -132,6 +132,13 @@ class Stage_Net():
             out_ = out_[0]
             sio.imsave(layout_folder + '%s.png' % fn, out_)
 
+    def predict_each(self, img):
+        self.model.eval()
+        pred, _ = self.model(Variable(img, volatile=True).cuda())
+        _, output = torch.max(pred, 1)
+        res = output.squeeze().cpu().data.numpy()
+        return res
+
     def forward(self, image, target, edge_map, room_type, is_eval=False):
 
         def to_var(t):
