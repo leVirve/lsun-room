@@ -1,55 +1,50 @@
 import os
+
 import cv2
-import skimage
+import numpy as np
 import skimage.io as sio
 import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.nn.init as weight_init
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.autograd import Variable
+
 from logger import Logger
 from utils import timeit
-import math
-import torch.utils.model_zoo as model_zoo
-from PIL import Image
-from lr_scheduler import *
-from models import *
-
-model_urls = {
-    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
-    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
-    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
-    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
-}
+from models import build_resnet101_FCN
 
 
 class StageNet():
 
     def __init__(self, name,
                  pretrained=False, stage_2=False,
-                 joint_class=False,
-                 l1_weight=0.1, type_portion=False, edge_portion=False):
+                 num_obj_class=37, joint_roomtype=False,
+                 l1_weight=0.1, roomtype_weight=False, edge_weight=False):
         self.name = name
-        self.joint_class = joint_class
-        self.model = nn.DataParallel(build_resnet101_FCN(
-            nb_classes=37, stage_2=stage_2, joint_class=joint_class)).cuda()
+        self.stage_2 = stage_2
+        self.joint_roomtype = joint_roomtype
+        self.model = nn.DataParallel(
+            build_resnet101_FCN(
+                num_class=num_obj_class,
+                stage_2=stage_2,
+                joint_roomtype=joint_roomtype)).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
         self.scheduler = ReduceLROnPlateau(
             self.optimizer, verbose=True, patience=2, mode='min', min_lr=1e-12)
-        self.tf_summary = Logger('./logs', name=name)
         self.criterion = Joint_Loss(
-            l1_portion=l1_weight, edge_portion=edge_portion, type_portion=type_portion)
+            l1_weight=l1_weight,
+            edge_weight=edge_weight,
+            type_weight=roomtype_weight)
+        self.tf_summary = Logger('./logs', name=name)
         self.accuracy = Joint_Accuracy()
-        self.stage_2 = stage_2
 
     def train(self, train_loader, validate_loader, epochs):
         for epoch in range(1, epochs + 1):
             self.model.train()
             self.epoch = epoch
             hist = EpochHistory(length=len(train_loader),
-                                joint_class=self.joint_class)
+                                joint_roomtype=self.joint_roomtype)
             progress = tqdm.tqdm(train_loader)
 
             for data in progress:
@@ -70,7 +65,7 @@ class StageNet():
                 hist.add(loss, loss_term, acc)
 
                 progress.set_description('Epoch#%i' % epoch)
-                if self.joint_class:
+                if self.joint_roomtype:
                     seg_acc = acc[0]
                     progress.set_postfix(
                         loss='%.04f' % loss.data[0],
@@ -87,7 +82,7 @@ class StageNet():
             metrics = dict(**hist.metric(), **
                            self.evaluate(validate_loader, prefix='val_'))
 
-            if self.joint_class:
+            if self.joint_roomtype:
                 print('---> Epoch#{}:\n train_loss: {loss:.4f}, train_seg_acc={seg_accuracy:.4f}, train_type_acc={type_accuracy:.4f}\n'
                       ' val_loss: {val_loss:.4f}, val_seg_acc={val_seg_accuracy:.4f}, val_type_acc={val_type_accuracy}'
                       .format(self.epoch, **metrics))
@@ -105,7 +100,7 @@ class StageNet():
     def evaluate(self, data_loader, prefix=''):
         self.model.eval()
         hist = EpochHistory(length=len(data_loader),
-                            joint_class=self.joint_class)
+                            joint_roomtype=self.joint_roomtype)
         for i, (data) in enumerate(data_loader):
             if not self.stage_2:
                 loss, loss_term, acc, output = self.forward(
@@ -115,9 +110,9 @@ class StageNet():
                 loss, loss_term, acc, output = self.forward(
                     data[0], data[1], data[2], data[3], is_eval=True)
                 hist.add(loss, loss_term, acc)
-                if i == 0 & self.joint_class:
+                if i == 0 & self.joint_roomtype:
                     self.summary_image(output[0].data, data[1], prefix)
-                elif i == 0 & self.joint_class == False:
+                elif i == 0 & self.joint_roomtype == False:
                     self.summary_image(output.data, data[1], prefix)
 
         return hist.metric(prefix=prefix)
@@ -156,12 +151,12 @@ class StageNet():
             output = self.model(image)
             loss, loss_term = self.criterion(
                 output, target, edge_map, room_type)
-            acc = self.accuracy(output, target, room_type, self.joint_class)
+            acc = self.accuracy(output, target, room_type, self.joint_roomtype)
         else:
             image, target = to_var(image), to_var(target)
             output = self.model(image)
             loss, loss_term = self.criterion(output, target, None, None)
-            acc = self.accuracy(output, target, None, self.joint_class)
+            acc = self.accuracy(output, target, None, self.joint_roomtype)
 
         return (loss, loss_term, acc, output) if is_eval else (loss, loss_term, acc)
 
@@ -188,10 +183,10 @@ class StageNet():
 
 class EpochHistory():
 
-    def __init__(self, length, joint_class):
+    def __init__(self, length, joint_roomtype):
         self.count = 0
         self.len = length
-        self.joint_class = joint_class
+        self.joint_roomtype = joint_roomtype
         self.loss_term = {'xent': None, 'l1': None, 'edge': None, 'type': None}
         self.losses = np.zeros(self.len)
         self.seg_accuracies = np.zeros(self.len)
@@ -200,7 +195,7 @@ class EpochHistory():
     def add(self, loss, loss_term, acc):
         self.losses[self.count] = loss.data[0]
 
-        if not self.joint_class:
+        if not self.joint_roomtype:
             self.seg_accuracies[self.count] = acc.data[0]
             self.type_accuracies[self.count] = None
         else:
@@ -226,8 +221,8 @@ class EpochHistory():
 
 class Joint_Accuracy():
 
-    def __call__(self, output, seg_target, type_target, joint_class):
-        return (self.pixelwise_accuracy(output[0], seg_target), self.type_accuracy(output[1], type_target)) if joint_class else self.pixelwise_accuracy(output, seg_target)
+    def __call__(self, output, seg_target, type_target, joint_roomtype):
+        return (self.pixelwise_accuracy(output[0], seg_target), self.type_accuracy(output[1], type_target)) if joint_roomtype else self.pixelwise_accuracy(output, seg_target)
 
     def pixelwise_accuracy(self, output, target):
         _, output = torch.max(output, 1)
@@ -240,30 +235,30 @@ class Joint_Accuracy():
 
 class Joint_Loss():
 
-    def __init__(self, l1_portion=0.1, edge_portion=0.1, type_portion=1., weights=None):
+    def __init__(self, l1_weight=0.1, edge_weight=0.1, type_weight=1., weights=None):
         self.l1_criterion = nn.L1Loss().cuda()
         self.crossentropy = nn.CrossEntropyLoss(weight=weights).cuda()
         self.edge_criterion = nn.BCELoss().cuda()
         self.type_criterion = nn.NLLLoss().cuda()
-        self.l1_portion = l1_portion
-        self.edge_portion = edge_portion
-        self.type_portion = type_portion
+        self.l1_weight = l1_weight
+        self.edge_weight = edge_weight
+        self.type_weight = type_weight
 
     def __call__(self, pred, target, edge_map, room_type) -> (float, dict):
         loss_term = {}
-        if (self.edge_portion is False) & (self.type_portion is False):
+        if (self.edge_weight is False) & (self.type_weight is False):
             pixelwise_loss, loss_term = self.pixelwise_loss(pred, target)
             return pixelwise_loss, loss_term
-        elif (self.edge_portion is False) & (self.type_portion is not False):
+        elif (self.edge_weight is False) & (self.type_weight is not False):
             pixelwise_loss, loss_term = self.pixelwise_loss(pred[0], target)
             type_loss, type_loss_term = self.type_loss(pred[1], room_type)
             loss_term.update(type_loss_term)
-            return pixelwise_loss + self.type_portion * type_loss, loss_term
-        elif (self.type_portion is False) & (self.edge_portion is not False):
+            return pixelwise_loss + self.type_weight * type_loss, loss_term
+        elif (self.type_weight is False) & (self.edge_weight is not False):
             pixelwise_loss, loss_term = self.pixelwise_loss(pred, target)
             edge_loss, edge_loss_term = self.edge_loss(pred, edge_map)
             loss_term.update(edge_loss_term)
-            return pixelwise_loss + self.edge_portion * edge_loss, loss_term
+            return pixelwise_loss + self.edge_weight * edge_loss, loss_term
         else:
             pixelwise_loss, loss_term = self.pixelwise_loss(pred[0], target)
             edge_loss, edge_loss_term = self.edge_loss(pred[0], edge_map)
@@ -271,13 +266,13 @@ class Joint_Loss():
 
             loss_term.update(edge_loss_term)
             loss_term.update(type_loss_term)
-            return pixelwise_loss + self.edge_portion * edge_loss + self.type_portion * type_loss, loss_term
+            return pixelwise_loss + self.edge_weight * edge_loss + self.type_weight * type_loss, loss_term
 
     def pixelwise_loss(self, pred, target):
         log_pred = F.log_softmax(pred)
         xent_loss = self.crossentropy(log_pred, target)
 
-        if not self.l1_portion:
+        if not self.l1_weight:
             return xent_loss, {'xent': xent_loss}
 
         onehot_target = (
@@ -287,7 +282,7 @@ class Joint_Loss():
 
         l1_loss = self.l1_criterion(pred, Variable(onehot_target))
 
-        return xent_loss + self.l1_portion * l1_loss, {'xent': xent_loss, 'l1': l1_loss}
+        return xent_loss + self.l1_weight * l1_loss, {'xent': xent_loss, 'l1': l1_loss}
 
     def edge_loss(self, pred, edge_map):
         _, pred = torch.max(pred, 1)
@@ -308,6 +303,3 @@ class Joint_Loss():
         type_loss = self.type_criterion(log_pred, room_type)
 
         return type_loss, {'type': type_loss}
-
-    def set_summary_loagger(self, tf_summary):
-        self.tf_summary = tf_summary

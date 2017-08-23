@@ -4,7 +4,6 @@ import cv2
 import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
-import pandas as pd
 
 
 class DataItem():
@@ -15,27 +14,8 @@ class DataItem():
         self.items = self._load(phase)
 
     def _load(self, phase):
-
-        if phase == 'validate':
-            phase_ = 'train'
-        elif phase == 'train' or 'test':
-            phase_ = phase
-
-        split_path = 'stage1_utils/{}_list.txt'.format(phase_)
-        splits = pd.read_csv(split_path, header=None, index_col=0)
-        file_list = []
-        for filename in splits[1]:
-            file_list.append(filename)
-
-        if phase is 'validate':
-            file_list_out = file_list[round(len(file_list) * 0.7):]
-        elif phase is 'train':
-            # file_list_out = file_list[:round(len(file_list) * 0.7)]
-            file_list_out = file_list
-        elif phase == 'test':
-            file_list_out = file_list
-
-        return file_list_out
+        num_image = 5285 if phase == 'train' else 5050
+        return ['img-%06d' % i for i in range(1, num_image + 1)]
 
 
 def Phase(phase):

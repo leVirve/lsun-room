@@ -41,7 +41,7 @@ class Demo():
             net = StageNet(name='stage1_ResFCN')
             pretrain = torch.load(self.stage1_weight)
         elif stage == 2:
-            net = StageNet(name='stage2_ResFCN', stage_2=True, joint_class=True)
+            net = StageNet(name='stage2_ResFCN', stage_2=True, joint_roomtype=True)
             pretrain = torch.load(self.stage2_weight)
 
         model_dict = net.model.state_dict()
