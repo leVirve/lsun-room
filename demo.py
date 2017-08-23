@@ -4,14 +4,12 @@ import cv2
 import click
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
-from net import Stage_Net
+from net import StageNet
 
 torch.backends.cudnn.benchmark = True
 
 
 def timeit(f):
-
     @wraps(f)
     def wrap(*args, **kw):
         s = time.time()
@@ -19,8 +17,60 @@ def timeit(f):
         e = time.time()
         print('--> %s(), cost %2.4f sec' % (f.__name__, e - s))
         return result
-
     return wrap
+
+
+class Demo():
+
+    stage1_weight = 'output/weight/stage1_ResFCN/mike20.pth'
+    stage2_weight = 'output/weight/stage2_ResFCN/mike30.pth'
+
+    def __init__(self, stage, input_size):
+        self.input_size = input_size
+        self.net = self.load_model(stage)
+        self.cmap = self.create_camp(stage)
+
+    def create_camp(self, stage):
+        self.num_class = 37 if stage == 2 else 5
+        return label_colormap(self.num_class + 1)[1:]
+
+    @timeit
+    def load_model(self, stage):
+
+        if stage == 1:
+            net = StageNet(name='stage1_ResFCN')
+            pretrain = torch.load(self.stage1_weight)
+        elif stage == 2:
+            net = StageNet(name='stage2_ResFCN', stage_2=True, joint_class=True)
+            pretrain = torch.load(self.stage2_weight)
+
+        model_dict = net.model.state_dict()
+        pretrain_dict = {k: v for k, v in pretrain.items() if k in model_dict}
+        model_dict.update(pretrain_dict)
+        net.model.load_state_dict(model_dict)
+
+        return net
+
+    @timeit
+    def process(self, raw):
+
+        def output_label(output):
+            label = np.zeros((*self.input_size, 3))
+            for lbl in range(self.num_class):
+                label[output == lbl] = self.cmap[lbl]
+            label = cv2.resize(label, (raw.shape[1], raw.shape[0]))
+            return label
+
+        img = cv2.resize(raw, self.input_size).transpose((2, 0, 1))
+        batched_img = torch.from_numpy(np.expand_dims(img, 0)).float()
+
+        output = self.net.predict_each(batched_img)
+        label = output_label(output)
+
+        raw = cv2.resize(raw, self.input_size)
+        label = cv2.resize(label, self.input_size)
+
+        return raw * 0.5 + label
 
 
 def label_colormap(N=256):
@@ -46,54 +96,25 @@ def label_colormap(N=256):
 
 @click.command()
 @click.option('--name', type=str)
-@click.option('--image_size', default=(404, 404), type=(int, int))
-@click.option('--workers', default=6, type=int)
-def main(name, image_size, workers):
-    net = load_model()
-    path = '../data/images/0031cb53219d43468b723a729e25384464593a33.jpg'
-    output, raw = net_feed(path, image_size, net)
-    label = convet_label(image_size, output, raw)
+@click.option('--stage', default=2)
+@click.option('--input_size', default=(404, 404), type=(int, int))
+def main(name, stage, input_size):
 
-    plt.imshow(raw * 0.5 + label)
-    plt.show()
+    demo = Demo(stage, input_size)
+    cap = cv2.VideoCapture(0)
 
+    while True:
+        ret, frame = cap.read()
 
-@timeit
-def load_model():
-    net = Stage_Net(name='stage2_ResFCN', pretrained=False, stage_2=True,
-                    joint_class=True, type_portion=0.1, edge_portion=0.1)
-    net.model.load_state_dict(torch.load('output/weight/stage2_ResFCN/20.pth'))
-    return net
+        raw_image = frame.astype('float') / 255
+        output = demo.process(raw_image)
 
+        cv2.imshow('layout', output)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-@timeit
-def convet_label(image_size, output, raw):
-    cmap = label_colormap(5)
-    label = np.zeros((*image_size, 3))
-    for lbl in range(5):
-        label[output == lbl] = cmap[lbl]
-    label = cv2.resize(label, (raw.shape[1], raw.shape[0]))
-    return label
-
-
-@timeit
-def net_feed(path, image_size, net):
-
-    @timeit
-    def preprocess():
-        raw = cv2.imread(path).astype('float') / 255
-        img = cv2.resize(raw, image_size).transpose((2, 0, 1))
-        batched_img = torch.from_numpy(np.expand_dims(img, 0)).float()
-        return raw, batched_img
-
-    @timeit
-    def feed():
-        return net.predict_each(batched_img)
-
-    raw, batched_img = preprocess()
-    output = feed()
-
-    return output, raw
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
