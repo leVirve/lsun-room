@@ -58,7 +58,6 @@ class Demo():
             label = np.zeros((*self.input_size, 3))
             for lbl in range(self.num_class):
                 label[output == lbl] = self.cmap[lbl]
-            label = cv2.resize(label, (raw.shape[1], raw.shape[0]))
             return label
 
         img = cv2.resize(raw, self.input_size).transpose((2, 0, 1))
@@ -67,8 +66,8 @@ class Demo():
         output = self.net.predict_each(batched_img)
         label = output_label(output)
 
-        raw = cv2.resize(raw, self.input_size)
-        label = cv2.resize(label, self.input_size)
+        raw = cv2.resize(raw, (raw.shape[1], raw.shape[0]))
+        label = cv2.resize(label, (raw.shape[1], raw.shape[0]))
 
         return raw * 0.5 + label
 
