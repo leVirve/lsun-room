@@ -35,7 +35,7 @@ def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
 
 	print('===> Prepare model')
 
-	net = Stage_Net(name='FCN32s-1', pretrained=True)
+	net = StageNet(name='FCN32s-1', pretrained=True)
 	print('===> Start training')
 	net.train(train_loader=train_loader,
 		validate_loader=validate_loader,
@@ -64,7 +64,7 @@ def stage_two(name, dataset_root, image_size, epochs, batch_size, workers, resum
 
 	print('===> Prepare model')
 
-	net = Stage_Net(name='FCN32s-1', pretrained=True)
+	net = StageNet(name='FCN32s-1', pretrained=True)
 	print('===> Start training')
 	net.train(train_loader=train_loader,
 		validate_loader=validate_loader,

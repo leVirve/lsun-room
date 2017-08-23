@@ -2,7 +2,7 @@ import click
 import torch
 
 from stage1_utils.dataset import ImageFolderDataset
-from net import *
+from net import StageNet
 
 torch.backends.cudnn.benchmark = True
 
@@ -12,8 +12,8 @@ torch.backends.cudnn.benchmark = True
 @click.option('--dataset_root', default='../data/stage1_data')
 @click.option('--image_size', default=(404, 404), type=(int, int))
 @click.option('--epochs', default=20, type=int)
-@click.option('--batch_size', default=1, type=int)
-@click.option('--workers', default=6, type=int)
+@click.option('--batch_size', default=8, type=int)
+@click.option('--workers', default=8, type=int)
 @click.option('--resume', type=click.Path(exists=True))
 def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
 
@@ -26,18 +26,13 @@ def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
         batch_size=batch_size, shuffle=True, **loader_args
     )
     validate_loader = torch.utils.data.DataLoader(
-        dataset=ImageFolderDataset(phase='validate', **dataset_args),
-        batch_size=batch_size, **loader_args
-    )
-    test_loader = torch.utils.data.DataLoader(
         dataset=ImageFolderDataset(phase='test', **dataset_args),
         batch_size=batch_size, **loader_args
     )
 
     print('===> Prepare model')
+    net = StageNet(name='stage1_ResFCN' + name, pretrained=False, l1_weight=0)
 
-    net = Stage_Net(name='stage1_ResFCN', pretrained=False, stage_2=False,
-                    joint_class=False, type_portion=False, edge_portion=False)
     print('===> Start training')
     net.train(train_loader=train_loader,
               validate_loader=validate_loader,

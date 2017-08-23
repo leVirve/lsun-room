@@ -25,9 +25,12 @@ model_urls = {
 }
 
 
-class Stage_Net():
+class StageNet():
 
-    def __init__(self, name, pretrained, stage_2, joint_class, type_portion, edge_portion):
+    def __init__(self, name,
+                 pretrained=False, stage_2=False,
+                 joint_class=False,
+                 l1_weight=0.1, type_portion=False, edge_portion=False):
         self.name = name
         self.joint_class = joint_class
         self.model = nn.DataParallel(build_resnet101_FCN(
@@ -37,7 +40,7 @@ class Stage_Net():
             self.optimizer, verbose=True, patience=2, mode='min', min_lr=1e-12)
         self.tf_summary = Logger('./logs', name=name)
         self.criterion = Joint_Loss(
-            l1_portion=0.1, edge_portion=edge_portion, type_portion=type_portion)
+            l1_portion=l1_weight, edge_portion=edge_portion, type_portion=type_portion)
         self.accuracy = Joint_Accuracy()
         self.stage_2 = stage_2
 
@@ -134,7 +137,10 @@ class Stage_Net():
 
     def predict_each(self, img):
         self.model.eval()
-        pred, _ = self.model(Variable(img, volatile=True).cuda())
+        if self.stage_2:
+            pred, _ = self.model(Variable(img, volatile=True).cuda())
+        else:
+            pred = self.model(Variable(img, volatile=True).cuda())
         _, output = torch.max(pred, 1)
         res = output.squeeze().cpu().data.numpy()
         return res
