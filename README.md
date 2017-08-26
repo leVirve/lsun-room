@@ -1,13 +1,18 @@
-# LSUN Room Layout Dataset Tool
+# LSUN Room Layout Estimation
 
 ## Prerequisite
 
 - Python 3.5+
 
-## Tools
+## Usage
+
+- Dataset
+  - Put `LSUN Room Layout Dataset` in folder `../data/` relative to this project.
+    - `images/`: RGB color image `*.jpg` of indoor room scene
+    - `layout_seg/`: layout ground truth `*.mat` of indoor room scene
+    - `layout_seg_images/`: generated layout ground truth `*.png` of indoor room scene
 
 - Training
-  - Put your `LSUN Room Layout` dataset in folder `../data/` relative to this project.
 
   ```bash
   python main.py
@@ -24,6 +29,8 @@
     --l1_weight FLOAT
     --resume PATH
   ```
+
+## Tools
 
 - Re-label
 
