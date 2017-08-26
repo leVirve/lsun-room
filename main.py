@@ -1,10 +1,11 @@
 import click
 import torch
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from datasets.lsun_room import Phase
-from datasets.lsun_room.dataset import ImageFolderDataset
+from models.fcn import FCN
 from models.network import LayoutNet
 from models.loss import LayoutLoss
+from datasets.lsun_room.folder import ImageFolderDataset
 
 torch.backends.cudnn.benchmark = True
 
@@ -27,22 +28,31 @@ def main(name, dataset_root,
     dataset_args = {'root': dataset_root, 'target_size': image_size}
     loader_args = {'num_workers': workers, 'pin_memory': True}
     train_loader = torch.utils.data.DataLoader(
-        dataset=ImageFolderDataset(phase=Phase.TRAIN, **dataset_args),
+        dataset=ImageFolderDataset(phase='train', **dataset_args),
         batch_size=batch_size, shuffle=True, **loader_args)
     validate_loader = torch.utils.data.DataLoader(
-        dataset=ImageFolderDataset(phase=Phase.VALIDATE, **dataset_args),
+        dataset=ImageFolderDataset(phase='val', **dataset_args),
         batch_size=batch_size, **loader_args)
 
     print('===> Prepare model')
+    model = FCN(num_classes=5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
     net = LayoutNet(
-        name,
-        criterion=LayoutLoss(l1_λ=l1_weight, edge_λ=edge_weight))
+            name,
+            model,
+            optimizer=optimizer,
+            criterion=LayoutLoss(l1_λ=l1_weight, edge_λ=edge_weight),
+            scheduler=ReduceLROnPlateau(
+                optimizer, patience=2, mode='min', min_lr=1e-12, verbose=True)
+        )
 
     print('===> Start training')
     net.train(
         train_loader=train_loader,
         validate_loader=validate_loader,
         epochs=epochs)
+    net.predict(validate_loader, name=name)
 
 
 if __name__ == '__main__':

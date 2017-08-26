@@ -68,7 +68,14 @@ class DataItems():
         self.items = self._load(phase)
 
     def _load(self, phase):
-        path = os.path.join(self.root_dir, '%s.mat' % phase)
+        phase_map = {
+            'train': 'training',
+            'val': 'validation',
+            'test': 'testing'
+        }
+        assert phase in phase_map.keys()
+
+        path = os.path.join(self.root_dir, '%s.mat' % phase_map[phase])
         meta = load_mat(path)[0]
         return [
             Item(

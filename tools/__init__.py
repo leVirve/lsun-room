@@ -1,8 +1,6 @@
 import time
 from functools import wraps
 
-from tools.logger import Logger  # noqa
-
 
 def timeit(f):
 

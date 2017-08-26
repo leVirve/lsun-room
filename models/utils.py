@@ -1,33 +1,29 @@
+import os
+from collections import defaultdict
+
 import torch
-import numpy as np
+import skimage.io
 
 
 class EpochHistory():
 
     def __init__(self, length):
-        self.count = 0
         self.len = length
-        self.loss_term = {'xent': None, 'l1': None, 'edge': None}
-        self.losses = np.zeros(self.len)
-        self.accuracies = np.zeros(self.len)
+        self.loss_terms = defaultdict(float)
+        self.accuracies = 0
 
-    def add(self, loss, loss_term, acc):
-        self.losses[self.count] = loss.data[0]
-        self.accuracies[self.count] = acc.data[0]
+    def add(self, losses, accuracy):
+        self.accuracies += accuracy.data[0]
+        for k, v in losses.items():
+            self.loss_terms[k] += v.data[0]
 
-        for k, v in loss_term.items():
-            if self.loss_term[k] is None:
-                self.loss_term[k] = np.zeros(self.len)
-            self.loss_term[k][self.count] = v.data[0]
-
-        self.count += 1
+        return {'accuracy': '%.04f' % accuracy.data[0],
+                'loss': '%.04f' % losses["loss"].data[0]}
 
     def metric(self, prefix=''):
-        terms = {prefix + 'loss': self.losses.mean(),
-                 prefix + 'accuracy': self.accuracies.mean()}
+        terms = {prefix + 'accuracy': self.accuracies / self.len}
         terms.update({
-            prefix + k: v.mean() for k, v in self.loss_term.items()
-            if v is not None})
+            prefix + k: v / self.len for k, v in self.loss_terms.items()})
         return terms
 
 
@@ -39,3 +35,13 @@ class LayoutAccuracy():
     def pixelwise_accuracy(self, output, target):
         _, output = torch.max(output, 1)
         return (output == target).float().mean()
+
+
+def save_images(folder_name, named_tensor):
+    root_folder = 'output/layout/%s/' % folder_name
+    os.makedirs(root_folder, exist_ok=True)
+
+    filenames, tensors = named_tensor
+    for fname, img in zip(filenames, tensors):
+        path = os.path.join(root_folder, '%s.png' % fname)
+        skimage.io.imsave(path, img)

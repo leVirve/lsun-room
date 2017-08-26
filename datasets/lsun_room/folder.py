@@ -6,7 +6,7 @@ import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
-from datasets.lsun_room.data import DataItems
+from datasets.lsun_room.item import DataItems
 from datasets.lsun_room.edge import mapping_func
 
 
