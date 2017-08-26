@@ -60,7 +60,8 @@ class Demo():
                 label[output == lbl] = self.cmap[lbl]
             return label
 
-        img = cv2.resize(raw, self.input_size).transpose((2, 0, 1))
+        img = np.subtract(raw, np.array([.485, .456, .406])) / np.array([.229, .224, .225])
+        img = cv2.resize(img, self.input_size).transpose((2, 0, 1))
         batched_img = torch.from_numpy(np.expand_dims(img, 0)).float()
 
         output = self.net.predict_each(batched_img)
