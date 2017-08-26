@@ -1,16 +1,17 @@
 import click
 import torch
 
-from lsun_room import Phase
-from lsun_room.dataset import ImageFolderDataset
-from fcn import LayoutNet, LayoutLoss
+from datasets.lsun_room import Phase
+from datasets.lsun_room.dataset import ImageFolderDataset
+from models.network import LayoutNet
+from models.loss import LayoutLoss
 
 torch.backends.cudnn.benchmark = True
 
 
 @click.command()
 @click.option('--name', type=str)
-@click.option('--dataset_root', default='../data')
+@click.option('--dataset_root', default='../data/lsun_room/')
 @click.option('--image_size', default=(404, 404), type=(int, int))
 @click.option('--epochs', default=50, type=int)
 @click.option('--batch_size', default=4, type=int)

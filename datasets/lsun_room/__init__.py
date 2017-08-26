@@ -1,4 +1,4 @@
-from lsun_room.data import DataItems  # noqa
+from datasets.lsun_room.data import DataItems  # noqa
 
 
 class Phase:

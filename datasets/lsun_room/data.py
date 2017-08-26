@@ -1,8 +1,8 @@
 import os
 import numpy as np
 
-from lsun_room.label import mapping_func
-from lsun_room.utils import load_mat, load_image, save_image
+from datasets.lsun_room.label import mapping_func
+from datasets.lsun_room.utils import load_mat, load_image, save_image
 
 
 class Item():

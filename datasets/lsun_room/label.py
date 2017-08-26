@@ -1,4 +1,4 @@
-from lsun_room.utils import mean_point
+from datasets.lsun_room.utils import mean_point
 
 
 class Layout:

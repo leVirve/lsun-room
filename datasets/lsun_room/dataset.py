@@ -6,8 +6,8 @@ import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
-from lsun_room.data import DataItems
-from lsun_room.edge import mapping_func
+from datasets.lsun_room.data import DataItems
+from datasets.lsun_room.edge import mapping_func
 
 
 class ImageFolderDataset(dset.ImageFolder):
