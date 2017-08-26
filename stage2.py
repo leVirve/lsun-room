@@ -33,10 +33,10 @@ def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
     )
 
     print('===> Prepare model')
-    net = StageNet(name='stage2_ResFCN', stage_2=True, joint_roomtype=True,
+    net = StageNet(name='stage2_ResFCNsz321', stage_2=True, joint_roomtype=True,
                    roomtype_weight=0.1, edge_weight=0.1)
 
-    pretrain_dict = torch.load('output/weight/stage1_ResFCN/20.pth')
+    pretrain_dict = torch.load('output/weight/stage1_ResFCNsz321_mean_no-l1/20.pth')
     model_dict = net.model.state_dict()
     pretrained_dict = {k: v for k,
                        v in pretrain_dict.items() if k in model_dict}

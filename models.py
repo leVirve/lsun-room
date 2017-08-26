@@ -116,14 +116,20 @@ class ResNetFCN(nn.Module):
 
         upscore = self.upscore(x)
         score_l4 = self.score_l4(x4)
-        upscore = upscore[:, :, 1:1 + score_l4.size()[2],
+        upscore = upscore[:, :,
+                          1:1 + score_l4.size()[2],
                           1:1 + score_l4.size()[3]].contiguous()
         upscore_l4 = self.upscore_l4(score_l4 + upscore)
 
         score_l3 = self.score_l3(x3)
+
+        upscore_l4 = upscore_l4[:, :,
+                                1:1 + score_l3.size()[2],
+                                1:1 + score_l3.size()[3]].contiguous()
         upscore_l3 = self.upscore_l3(upscore_l4 + score_l3)
-        out = upscore_l3[:, :, 27:27 + in_.size()[2], 27:27 +
-                         in_.size()[3]].contiguous()
+        out = upscore_l3[:, :,
+                         27:27 + in_.size()[2],
+                         27:27 + in_.size()[3]].contiguous()
         if self.stage_2:
             out = self.fc(out)
             return out, type_x if self.joint_roomtype else out
