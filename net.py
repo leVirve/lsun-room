@@ -106,13 +106,14 @@ class StageNet():
                 loss, loss_term, acc, output = self.forward(
                     data[0], data[1], None, None, is_eval=True)
                 hist.add(loss, loss_term, acc)
+                self.summary_image(output.data, data[1], prefix)
             else:
                 loss, loss_term, acc, output = self.forward(
                     data[0], data[1], data[2], data[3], is_eval=True)
                 hist.add(loss, loss_term, acc)
                 if i == 0 & self.joint_roomtype:
                     self.summary_image(output[0].data, data[1], prefix)
-                elif i == 0 & self.joint_roomtype == False:
+                elif i == 0:
                     self.summary_image(output.data, data[1], prefix)
 
         return hist.metric(prefix=prefix)

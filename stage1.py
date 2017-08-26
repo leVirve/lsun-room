@@ -29,6 +29,10 @@ def main(name, dataset_root, image_size, epochs, batch_size, workers, resume):
         dataset=ImageFolderDataset(phase='test', **dataset_args),
         batch_size=batch_size, **loader_args
     )
+    trainval_loader = torch.utils.data.DataLoader(
+        dataset=ImageFolderDataset(phase='all', **dataset_args),
+        batch_size=batch_size, shuffle=True, **loader_args
+    )
 
     print('===> Prepare model')
     net = StageNet(name='stage1_ResFCN' + name, pretrained=False, l1_weight=0)

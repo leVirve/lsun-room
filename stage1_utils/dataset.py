@@ -14,25 +14,27 @@ class DataItem():
         self.items = self._load(phase)
 
     def _load(self, phase):
-        num_image = 5285 if phase == 'train' else 5050
-        return ['img-%06d' % i for i in range(1, num_image + 1)]
+        train_imgs = ['train/img-%06d' % i for i in range(1, 5285 + 1)]
+        test_imgs = ['test/img-%06d' % i for i in range(1, 5050 + 1)]
 
-
-def Phase(phase):
-    if phase == 'validate':
-        phase = 'train'
-    return phase
+        if phase == 'train':
+            return train_imgs
+        elif phase == 'test':
+            return test_imgs
+        else:
+            return train_imgs + test_imgs
 
 
 class ImageFolderDataset(dset.ImageFolder):
 
     transform = transforms.Compose([
         transforms.ToTensor(),
-        #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
     def __init__(self, root, target_size, phase):
-        self.phase = Phase(phase)
+        self.phase = phase
         self.target_size = target_size
         self.dataset = DataItem(root, phase)
         self.filenames = self.dataset.items
@@ -41,10 +43,8 @@ class ImageFolderDataset(dset.ImageFolder):
         return self.load(self.filenames[index])
 
     def load(self, filename):
-        image_path = os.path.join(
-            self.dataset.image, '{}/{}.jpg'.format(self.phase, filename))
-        label_path = os.path.join(
-            self.dataset.label, '{}/{}.png'.format(self.phase, filename))
+        image_path = os.path.join(self.dataset.image, '{}.jpg'.format(filename))
+        label_path = os.path.join(self.dataset.label, '{}.png'.format(filename))
 
         img = cv2.imread(image_path)
         lbl = cv2.imread(label_path, 0)
