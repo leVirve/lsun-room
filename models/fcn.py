@@ -89,5 +89,5 @@ class FCN(nn.Module):
         x = self.features(x)
         x = self.classifier(x)
         x = self.upscore(x)
-        x = x[:, :, 44:44 + x.size()[2], 44:44 + x.size()[3]].contiguous()
+        x = x[:, :, 22:-22, 22:-22].contiguous()
         return x
