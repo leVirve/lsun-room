@@ -35,7 +35,7 @@ def main(name, dataset_root,
         batch_size=batch_size, **loader_args)
 
     print('===> Prepare model')
-    model = FCN(num_classes=5)
+    model = FCN(num_classes=5, input_size=image_size)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     net = LayoutNet(

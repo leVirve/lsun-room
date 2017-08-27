@@ -7,7 +7,7 @@ from tools import timeit
 
 class FCN(nn.Module):
 
-    def __init__(self, num_classes=5):
+    def __init__(self, num_classes=5, input_size=None, pretrained=True):
         super(FCN, self).__init__()
         self.features = nn.Sequential(
             # conv1
@@ -67,7 +67,9 @@ class FCN(nn.Module):
         )
         self.upscore = nn.ConvTranspose2d(num_classes, num_classes, 64, stride=32,
                                           bias=False)
-        self._initialize_weights()
+        self.output_size = input_size
+        if pretrained:
+            self._initialize_weights()
 
     @timeit
     def _initialize_weights(self):
@@ -89,5 +91,10 @@ class FCN(nn.Module):
         x = self.features(x)
         x = self.classifier(x)
         x = self.upscore(x)
-        x = x[:, :, 22:-22, 22:-22].contiguous()
+
+        _, _, h, w = x.size()
+        oh, ow = self.output_size
+        sh, sw = (h - oh) // 2, (w - ow) // 2
+
+        x = x[:, :, sh:-sh, sw:-sw].contiguous()
         return x
