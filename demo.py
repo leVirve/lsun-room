@@ -60,14 +60,21 @@ class Demo():
 
 @click.command()
 @click.option('--name', type=str)
+@click.option('--device', default=0)
+@click.option('--video', default='')
 @click.option('--input_size', default=(404, 404), type=(int, int))
-def main(name, input_size):
+def main(name, device, video, input_size):
 
     demo = Demo(input_size)
-    cap = cv2.VideoCapture(0)
+
+    reader = video if video else device
+    cap = cv2.VideoCapture(reader)
 
     while True:
         ret, frame = cap.read()
+
+        if not ret:
+            break
 
         output = demo.process(frame[:, :, ::-1])
 

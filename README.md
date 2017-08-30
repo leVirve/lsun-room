@@ -2,7 +2,9 @@
 
 ## Prerequisite
 
-- Python 3.6+
+- Python 3.5+
+- OpenCV 3
+- `scilit-image` and `click`
 
 ## Usage
 
