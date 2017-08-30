@@ -30,7 +30,7 @@ class ImageFolderDataset(dset.ImageFolder):
         image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
         label_path = os.path.join(self.dataset.layout_image, '%s.png' % name)
 
-        img = cv2.imread(image_path)
+        img = cv2.imread(image_path)[:, :, ::-1]
         lbl = cv2.imread(label_path, 0)
 
         img = cv2.resize(img, self.target_size, cv2.INTER_LINEAR)
