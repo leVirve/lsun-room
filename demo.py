@@ -13,29 +13,27 @@ torch.backends.cudnn.benchmark = True
 
 class Demo():
 
-    weight = 'output/weight/vgg/29.pth'
-
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    def __init__(self, input_size):
+    def __init__(self, input_size, weight=None):
         self.input_size = input_size
         self.num_class = 5
-        self.model = self.load_model()
+        self.model = self.load_model(weight)
         self.cmap = self.create_camp()
 
     def create_camp(self):
         return label_colormap(self.num_class + 1)[1:]
 
     @timeit
-    def load_model(self):
+    def load_model(self, weight):
         model = nn.DataParallel(
-                FCN(num_classes=5, pretrained=False, input_size=self.input_size)
-            ).cuda()
-        model.load_state_dict(torch.load(self.weight))
+                FCN(num_classes=5, input_size=self.input_size,
+                    pretrained=False)).cuda()
+        model.load_state_dict(torch.load(weight))
         return model
 
     @timeit
@@ -50,7 +48,7 @@ class Demo():
         img = cv2.resize(raw, self.input_size)
         batched_img = self.transform(img).unsqueeze(0).cuda()
 
-        output = self.model.predict(batched_img)
+        output = self.model.module.predict(batched_img)
         label = output_label(output)
 
         label = cv2.resize(label, (raw.shape[1], raw.shape[0]))
@@ -62,10 +60,11 @@ class Demo():
 @click.option('--name', type=str)
 @click.option('--device', default=0)
 @click.option('--video', default='')
+@click.option('--weight', default='output/weight/vgg_bn_new/24.pth')
 @click.option('--input_size', default=(404, 404), type=(int, int))
-def main(name, device, video, input_size):
+def main(name, device, video, weight, input_size):
 
-    demo = Demo(input_size)
+    demo = Demo(input_size, weight=weight)
 
     reader = video if video else device
     cap = cv2.VideoCapture(reader)
