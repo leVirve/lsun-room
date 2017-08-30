@@ -1,8 +1,17 @@
 import cv2
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+
+
+laplacian_kernel = Variable(torch.from_numpy(
+    np.array([
+        [-1, -1, -1],
+        [-1,  8, -1],
+        [-1, -1, -1]])
+    ).unsqueeze(0).unsqueeze(0).float()).cuda()
 
 
 class LayoutLoss():
@@ -12,11 +21,11 @@ class LayoutLoss():
         self.edge_λ = edge_λ
         self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
         self.l1_criterion = nn.L1Loss().cuda()
-        self.edge_criterion = nn.BCELoss().cuda()
+        self.edge_criterion = nn.MSELoss().cuda()
 
-    def __call__(self, pred, target, edge_map) -> dict:
+    def __call__(self, output, pred, target, edge_map) -> dict:
         loss_terms = {}
-        loss_terms.update(self.pixelwise_loss(pred, target))
+        loss_terms.update(self.pixelwise_loss(output, target))
         loss_terms.update(self.edge_loss(pred, edge_map))
 
         loss = loss_terms.get('classification')
@@ -44,7 +53,18 @@ class LayoutLoss():
 
         return {'classification': xent_loss, 'seg_area': l1_loss}
 
-    def edge_loss(self, pred, edge_map) -> dict:
+    def edge_loss(self, pred, label) -> dict:
+        if not self.edge_λ:
+            return {}
+        edge = nn.functional.conv2d(
+            pred.unsqueeze(1).float(), laplacian_kernel, padding=4, dilation=4)
+
+        edge[torch.abs(edge) < 1e-1] = 0
+        edge_loss = self.edge_criterion(edge, label)
+
+        return {'edge': edge_loss}
+
+    def _cv2_edge_loss(self, pred, edge_map) -> dict:
         if not self.edge_λ:
             return {}
 

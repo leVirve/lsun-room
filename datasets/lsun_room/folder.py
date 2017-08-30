@@ -40,7 +40,7 @@ class ImageFolderDataset(dset.ImageFolder):
         lbl = np.clip(lbl, 1, 5) - 1
         lbl = torch.from_numpy(lbl).long()
 
-        edge = torch.from_numpy(self.load_edge_map(index) / 255).long()
+        edge = torch.from_numpy(self.load_edge_map(index) / 255).float()
 
         return img, lbl, edge
 

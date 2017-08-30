@@ -67,12 +67,12 @@ class Trainer():
             return Variable(t, volatile=is_eval).cuda()
 
         label, edge_map = target
-        image, label = to_var(image), to_var(label)
+        image, label, edge_map = to_var(image), to_var(label), to_var(edge_map)
 
         output = self.model(image)
         _, pred = torch.max(output, 1)
 
-        losses = self.criterion(output, label, edge_map)
+        losses = self.criterion(output, pred, label, edge_map)
         acc = self.accuracy(pred, label)
 
         return (losses, acc, pred.data) if is_eval else (losses, acc)
