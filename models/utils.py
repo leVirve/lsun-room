@@ -1,7 +1,6 @@
 import os
 from collections import defaultdict
 
-import torch
 import skimage.io
 
 
@@ -33,15 +32,17 @@ class LayoutAccuracy():
         return self.pixelwise_accuracy(output, target)
 
     def pixelwise_accuracy(self, output, target):
-        _, output = torch.max(output, 1)
         return (output == target).float().mean()
 
 
-def save_images(folder_name, named_tensor):
-    root_folder = 'output/layout/%s/' % folder_name
+def to_numpy_img(output):
+    return output.cpu().numpy()
+
+
+def save_batched_images(tensors, filenames=None, folder=None):
+    root_folder = 'output/layout/%s/' % folder
     os.makedirs(root_folder, exist_ok=True)
 
-    filenames, tensors = named_tensor
     for fname, img in zip(filenames, tensors):
         path = os.path.join(root_folder, '%s.png' % fname)
         skimage.io.imsave(path, img)

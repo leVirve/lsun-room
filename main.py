@@ -2,9 +2,8 @@ import click
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-from models.fcn import FCN
-from models.network import LayoutNet
-from models.loss import LayoutLoss
+import models
+from models.utils import save_batched_images
 from datasets.lsun_room.folder import ImageFolderDataset
 
 torch.backends.cudnn.benchmark = True
@@ -35,24 +34,35 @@ def main(name, dataset_root,
         batch_size=batch_size, **loader_args)
 
     print('===> Prepare model')
-    model = FCN(num_classes=5, input_size=image_size)
+    model = models.fcn.FCN(num_classes=5, input_size=image_size)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
-    net = LayoutNet(
+    trainer = models.network.Trainer(
             name,
             model,
             optimizer=optimizer,
-            criterion=LayoutLoss(l1_λ=l1_weight, edge_λ=edge_weight),
+            criterion=models.loss.LayoutLoss(
+                l1_λ=l1_weight, edge_λ=edge_weight),
             scheduler=ReduceLROnPlateau(
                 optimizer, patience=2, mode='min', min_lr=1e-12, verbose=True)
         )
 
     print('===> Start training')
-    net.train(
+    trainer.train(
         train_loader=train_loader,
         validate_loader=validate_loader,
         epochs=epochs)
-    net.predict(validate_loader, name=name)
+
+    print('===> Generate validation results')
+    fnames = validate_loader.dataset.filenames
+
+    def save_prediction(batch_id, imgs):
+        s, e = batch_id * batch_size, (batch_id + 1) * batch_size
+        save_batched_images(imgs, filenames=fnames[s:e], folder=name)
+
+    trainer.evaluate(
+        validate_loader,
+        callback=save_prediction)
 
 
 if __name__ == '__main__':

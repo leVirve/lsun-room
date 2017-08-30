@@ -3,13 +3,13 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from models.saver import Saver, Predictor
-from models.utils import LayoutAccuracy, EpochHistory, save_images
+from models.saver import Saver
+from models.utils import LayoutAccuracy, EpochHistory, to_numpy_img
 from models.logger import Logger
 from tools import timeit
 
 
-class LayoutNet():
+class Trainer():
 
     def __init__(self, name, model, optimizer, criterion, scheduler):
         self.name = name
@@ -46,25 +46,20 @@ class LayoutNet():
             self.saver.save()
 
     @timeit
-    def evaluate(self, data_loader, prefix=''):
+    def evaluate(self, data_loader, prefix='', callback=None):
         self.model.eval()
         history = EpochHistory(length=len(data_loader))
-        for i, (image, *target) in enumerate(data_loader):
-            losses, accuracy, output = self.forward(image, target, is_eval=True)
-            history.add(losses, accuracy)
-            if i == 0:
-                self.summary_image(output.data, target, prefix)
-        return history.metric(prefix=prefix)
 
-    def predict(self, data_loader, name):
-        predictor = Predictor(self.model)
-        for i, (image, *_) in enumerate(data_loader):
-            output = predictor.forward(image)
-            filenames = [
-                data_loader.dataset.filenames[i * len(image)]
-                for e in range(len(image))
-            ]
-            save_images(name, (filenames, output))
+        for i, (image, *target) in enumerate(data_loader):
+            losses, accuracy, pred = self.forward(image, target, is_eval=True)
+            history.add(losses, accuracy)
+
+            if callback:
+                callback(i, to_numpy_img(pred))
+            elif i == 0:
+                self.summary_image(pred, target, prefix)
+
+        return history.metric(prefix=prefix)
 
     def forward(self, image, target, is_eval=False):
 
@@ -73,21 +68,24 @@ class LayoutNet():
 
         label, edge_map = target
         image, label = to_var(image), to_var(label)
+
         output = self.model(image)
+        _, pred = torch.max(output, 1)
+
         losses = self.criterion(output, label, edge_map)
-        acc = self.accuracy(output, label)
-        return (losses, acc, output) if is_eval else (losses, acc)
+        acc = self.accuracy(pred, label)
+
+        return (losses, acc, pred.data) if is_eval else (losses, acc)
 
     def summary_scalar(self, metrics):
         for tag, value in metrics.items():
             self.tf_summary.scalar(tag, value, self.epoch)
 
-    def summary_image(self, output, target, prefix):
+    def summary_image(self, pred, target, prefix):
 
         def to_numpy(imgs):
             return imgs.squeeze().cpu().numpy()
 
         label, _ = target
-        _, pred = torch.max(output, 1)
         self.tf_summary.image(prefix + 'pred', to_numpy(pred), self.epoch)
         self.tf_summary.image(prefix + 'label', to_numpy(label), self.epoch)

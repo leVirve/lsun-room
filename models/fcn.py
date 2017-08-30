@@ -1,7 +1,9 @@
 import torch.nn as nn
 import torch.nn.init as weight_init
+from torch.autograd import Variable
 import torchvision.models as models
 
+from models.utils import to_numpy_img
 from tools import timeit
 
 
@@ -44,6 +46,11 @@ class FCN(nn.Module):
         x = x[:, :, sh:-sh, sw:-sw].contiguous()
 
         return x
+
+    def predict(self, img):
+        self.eval()
+        out = self.forward(Variable(img, volatile=True).cuda())
+        return to_numpy_img(out)
 
     @timeit
     def _initialize_module(self, pretrained):
