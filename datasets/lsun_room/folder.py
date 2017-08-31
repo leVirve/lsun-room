@@ -22,9 +22,18 @@ class ImageFolderDataset(dset.ImageFolder):
         self.target_size = target_size
         self.dataset = DataItems(root_dir=root, phase=phase)
         self.filenames = [e.name for e in self.dataset.items]
+        self._edge_width = 2
 
     def __getitem__(self, index):
         return self.load(self.filenames[index], index)
+
+    @property
+    def edge_width(self):
+        return self._edge_width
+
+    @edge_width.setter
+    def edge_width(self, width):
+        self._edge_width = width
 
     def load(self, name, index):
         image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
@@ -32,6 +41,7 @@ class ImageFolderDataset(dset.ImageFolder):
 
         img = cv2.imread(image_path)[:, :, ::-1]
         lbl = cv2.imread(label_path, 0)
+        edge = self.load_edge_map(index) / 255
 
         img = cv2.resize(img, self.target_size, cv2.INTER_LINEAR)
         lbl = cv2.resize(lbl, self.target_size, cv2.INTER_NEAREST)
@@ -39,15 +49,14 @@ class ImageFolderDataset(dset.ImageFolder):
         img = self.transform(img)
         lbl = np.clip(lbl, 1, 5) - 1
         lbl = torch.from_numpy(lbl).long()
-
-        edge = torch.from_numpy(self.load_edge_map(index) / 255).float()
+        edge = torch.from_numpy(edge).float()
 
         return img, lbl, edge
 
     def load_edge_map(self, index):
         e = self.dataset.items[index]
         edge_map = mapping_func(e.type)
-        return edge_map(e, image_size=self.target_size, width=2)
+        return edge_map(e, image_size=self.target_size, width=self._edge_width)
 
     def __len__(self):
         return len(self.filenames)
