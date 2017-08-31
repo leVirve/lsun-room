@@ -57,12 +57,11 @@ class Demo():
 
 
 @click.command()
-@click.option('--name', type=str)
 @click.option('--device', default=0)
 @click.option('--video', default='')
 @click.option('--weight', default='output/weight/vgg_bn_new/24.pth')
 @click.option('--input_size', default=(404, 404), type=(int, int))
-def main(name, device, video, weight, input_size):
+def main(device, video, weight, input_size):
 
     demo = Demo(input_size, weight=weight)
 

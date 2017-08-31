@@ -4,7 +4,7 @@
 
 - Python 3.5+
 - OpenCV 3
-- `scilit-image` and `click`
+- `scikit-image` and `click`
 
 ## Usage
 
@@ -35,6 +35,21 @@
     --workers INTEGER
     --l1_weight FLOAT
     --resume PATH
+  ```
+
+- Demo
+
+  ```bash
+  python demo.py
+
+  Usage: demo.py [OPTIONS]
+
+  Options:
+    --device INTEGER
+    --video TEXT
+    --weight TEXT
+    --input_size <INTEGER INTEGER>.
+
   ```
 
 ## Tools
