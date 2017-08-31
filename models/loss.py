@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+from models.utils import to_numpy
+
 
 laplacian_kernel = Variable(torch.from_numpy(
     np.array([
@@ -35,6 +37,9 @@ class LayoutLoss():
 
         return loss_terms
 
+    def register_trainer(self, trainer):
+        self.trainer = trainer
+
     def pixelwise_loss(self, pred, target) -> dict:
 
         ''' Cross-entropy loss '''
@@ -62,6 +67,16 @@ class LayoutLoss():
         edge = edge.squeeze()
         edge[torch.abs(edge) < 1e-1] = 0
         edge_loss = self.edge_criterion(edge[edge != 0], label[edge != 0])
+
+        if self.trainer.summary_img:
+            self.trainer.tf_summary.image(
+                'val_label_edge', to_numpy(label.data),
+                self.trainer.epoch,
+                tag_count_base=self.trainer.evaluated_images)
+            self.trainer.tf_summary.image(
+                'val_pred_edge', to_numpy(edge.data),
+                self.trainer.epoch,
+                tag_count_base=self.trainer.evaluated_images)
 
         return {'edge': edge_loss}
 

@@ -19,23 +19,19 @@ class Logger(object):
         summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
         self.writer.add_summary(summary, step)
 
-    def image(self, tag, images, step):
+    def image(self, tag, images, step, tag_count_base=0):
         """Log a list of images."""
-
         img_summaries = []
         for i, img in enumerate(images):
-            # Write the image to a string
             s = BytesIO()
             scipy.misc.toimage(img).save(s, format="png")
-
-            # Create an Image object
             img_sum = tf.Summary.Image(encoded_image_string=s.getvalue(),
                                        height=img.shape[0],
                                        width=img.shape[1])
-            # Create a Summary value
-            img_summaries.append(tf.Summary.Value(tag='%s/%d' % (tag, i), image=img_sum))
+            img_summaries.append(
+                tf.Summary.Value(tag='%s/%d' % (tag, tag_count_base + i),
+                                 image=img_sum))
 
-        # Create and write Summary
         summary = tf.Summary(value=img_summaries)
         self.writer.add_summary(summary, step)
 

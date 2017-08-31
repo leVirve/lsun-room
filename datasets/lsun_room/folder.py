@@ -22,7 +22,7 @@ class ImageFolderDataset(dset.ImageFolder):
         self.target_size = target_size
         self.dataset = DataItems(root_dir=root, phase=phase)
         self.filenames = [e.name for e in self.dataset.items]
-        self._edge_width = 2
+        self._edge_width = 30
 
     def __getitem__(self, index):
         return self.load(self.filenames[index], index)
@@ -33,7 +33,7 @@ class ImageFolderDataset(dset.ImageFolder):
 
     @edge_width.setter
     def edge_width(self, width):
-        self._edge_width = width
+        self._edge_width = int(width) if width > 2 else 2
 
     def load(self, name, index):
         image_path = os.path.join(self.dataset.image, '%s.jpg' % name)

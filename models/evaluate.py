@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 import numpy as np
-from models.utils import to_numpy_img
+from models.utils import to_numpy
 np.seterr(divide='ignore', invalid='ignore')
 
 
@@ -58,8 +58,8 @@ class LayoutAccuracy():
         confusion = np.zeros((n_class, n_class), dtype=np.int64)
 
         for pred_label, gt_label in zip(pred_labels, gt_labels):
-            pred_label = to_numpy_img(pred_label.view(-1).data)
-            gt_label = to_numpy_img(gt_label.view(-1).data)
+            pred_label = to_numpy(pred_label.view(-1).data)
+            gt_label = to_numpy(gt_label.view(-1).data)
 
             # Count statistics from valid pixels.
             mask = gt_label >= 0

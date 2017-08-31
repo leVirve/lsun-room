@@ -4,7 +4,7 @@ import torch.nn.init as weight_init
 from torch.autograd import Variable
 import torchvision.models as models
 
-from models.utils import to_numpy_img
+from models.utils import to_numpy
 from tools import timeit
 
 
@@ -52,7 +52,7 @@ class FCN(nn.Module):
         self.eval()
         output = self.forward(Variable(img, volatile=True).cuda())
         _, pred = torch.max(output, 1)
-        return to_numpy_img(pred.data)
+        return to_numpy(pred.data)
 
     @timeit
     def _initialize_module(self, pretrained):
