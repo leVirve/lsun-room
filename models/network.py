@@ -3,8 +3,9 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
+from models.evaluate import LayoutAccuracy, EpochHistory
 from models.saver import Saver
-from models.utils import LayoutAccuracy, EpochHistory, to_numpy_img
+from models.utils import to_numpy_img
 from models.logger import Logger
 from tools import timeit
 
@@ -39,8 +40,10 @@ class Trainer():
 
             metrics = dict(**history.metric(),
                            **self.evaluate(validate_loader, prefix='val_'))
-            print('---> Epoch#%d val_loss: %.4f, val_accuracy: %.4f' % (
-                    epoch + 1, metrics['val_loss'], metrics['val_accuracy']))
+            print(('--> Epoch#%d'
+                   ' val_loss: %.4f, val_accuracy: %.4f, val_iou: %.4f') % (
+                    epoch + 1, metrics['val_loss'],
+                    metrics['val_pixel_accuracy'], metrics['val_miou']))
             self.scheduler.step(metrics['val_loss'])
             self.summary_scalar(metrics)
             self.saver.save()
