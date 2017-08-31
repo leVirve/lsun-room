@@ -59,8 +59,9 @@ class LayoutLoss():
         edge = nn.functional.conv2d(
             pred.unsqueeze(1).float(), laplacian_kernel, padding=4, dilation=4)
 
+        edge = edge.squeeze()
         edge[torch.abs(edge) < 1e-1] = 0
-        edge_loss = self.edge_criterion(edge, label)
+        edge_loss = self.edge_criterion(edge[edge != 0], label[edge != 0])
 
         return {'edge': edge_loss}
 
