@@ -5,8 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-from models.utils import to_numpy
-
 
 laplacian_kernel = Variable(torch.from_numpy(
     np.array([
@@ -25,10 +23,10 @@ class LayoutLoss():
         self.l1_criterion = nn.L1Loss().cuda()
         self.edge_criterion = nn.MSELoss().cuda()
 
-    def __call__(self, output, pred, target, edge_map) -> dict:
+    def __call__(self, score, pred, gt_layout, gt_edge, end_hook=None):
         loss_terms = {}
-        loss_terms.update(self.pixelwise_loss(output, target))
-        loss_terms.update(self.edge_loss(pred, edge_map))
+        loss_terms.update(self.pixelwise_loss(score, gt_layout))
+        loss_terms.update(self.edge_loss(pred, gt_edge, end_hook))
 
         loss = loss_terms.get('classification')
         loss += self.l1_λ * loss_terms.get('seg_area', 0)
@@ -58,7 +56,7 @@ class LayoutLoss():
 
         return {'classification': xent_loss, 'seg_area': l1_loss}
 
-    def edge_loss(self, pred, label) -> dict:
+    def edge_loss(self, pred, label, end_hook) -> dict:
         if not self.edge_λ:
             return {}
         edge = nn.functional.conv2d(
@@ -68,15 +66,8 @@ class LayoutLoss():
         edge[torch.abs(edge) < 1e-1] = 0
         edge_loss = self.edge_criterion(edge[edge != 0], label[edge != 0])
 
-        if self.trainer.summary_img:
-            self.trainer.tf_summary.image(
-                'val_label_edge', to_numpy(label.data),
-                self.trainer.epoch,
-                tag_count_base=self.trainer.evaluated_images)
-            self.trainer.tf_summary.image(
-                'val_pred_edge', to_numpy(edge.data),
-                self.trainer.epoch,
-                tag_count_base=self.trainer.evaluated_images)
+        if end_hook:
+            end_hook(edge)
 
         return {'edge': edge_loss}
 

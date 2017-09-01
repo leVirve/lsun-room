@@ -22,14 +22,14 @@ class Trainer():
         self.scheduler = scheduler
         self.accuracy = LayoutAccuracy()
         self.tf_summary = Logger('./logs', name=name)
-        self.saver = Saver(network=self)
+        self.saver = Saver()
 
         self.dataset_hook = shrink_edge_width
-        self.summary_img = False
+        self.summary = False
         self.evaluated_images = 0
 
         self.criterion.register_trainer(self)
-        self.dataset_hook.register_trainer(self)
+        self.saver.register_trainer(self)
 
     def train(self, train_loader, validate_loader, epochs):
         for epoch in range(epochs):
@@ -40,67 +40,73 @@ class Trainer():
 
             for image, *target in progress:
                 self.optimizer.zero_grad()
-                losses, accuracy = self.forward(image, target)
+                losses, accuracies = self.forward(image, target)
                 losses['loss'].backward()
                 self.optimizer.step()
 
-                progress.set_description('Epoch#%d' % epoch)
-                progress.set_postfix(history.add(losses, accuracy))
+                progress.set_description('Epoch#%d' % (epoch + 1))
+                progress.set_postfix(history.add(losses, accuracies))
 
-            metrics = dict(**history.metric(),
-                           **self.evaluate(validate_loader, prefix='val_'))
-            print(('--> Epoch#%d'
-                   ' val_loss: %.4f, val_accuracy: %.4f, val_iou: %.4f') % (
-                    epoch + 1, metrics['val_loss'],
-                    metrics['val_pixel_accuracy'], metrics['val_miou']))
-            self.scheduler.step(metrics['val_loss'])
+            train_metrics = history.metric()
+            valid_metrics = self.evaluate(validate_loader)
+
+            self.scheduler.step(valid_metrics['loss'])
             self.dataset_hook(self, train_loader, validate_loader)
-            self.summary_scalar(metrics)
+            self.summary_scalar(train_metrics)
+            self.summary_scalar(valid_metrics, prefix='val_')
             self.saver.save()
 
     @timeit
-    def evaluate(self, data_loader, prefix='', callback=None):
+    def evaluate(self, data_loader, callback=None):
         self.model.eval()
         history = EpochHistory(length=len(data_loader))
 
         self.evaluated_images = 0
         for i, (image, *target) in enumerate(data_loader):
-            self.summary_img = self.evaluated_images < self.max_summary_image
-
-            losses, accuracy, pred = self.forward(image, target, is_eval=True)
-            history.add(losses, accuracy)
-            if callback:
-                callback(i, to_numpy(pred))
-            elif self.summary_img:
-                self.summary_image(pred, target, prefix)
-
+            self.summary = self.evaluated_images < self.max_summary_image
+            losses, accuracies = self.forward(
+                image, target,
+                hook=(lambda x: callback(i, to_numpy(x))) if callback else None)
+            history.add(losses, accuracies)
             self.evaluated_images += image.size(0)
 
-        return history.metric(prefix=prefix)
+        metrics = history.metric()
+        print('--> Epoch#%d' % (self.epoch + 1), end=' ')
+        print('val_loss: %.4f, val_accuracy: %.4f, val_iou: %.4f' % (
+              metrics['loss'], metrics['pixel_accuracy'], metrics['miou']))
+        return metrics
 
-    def forward(self, image, target, is_eval=False):
+    def forward(self, image, target, hook=None):
 
         def to_var(t):
-            return Variable(t, volatile=is_eval).cuda()
+            return Variable(t, volatile=not self.model.training).cuda()
 
-        label, edge_map = target
-        image, label, edge_map = to_var(image), to_var(label), to_var(edge_map)
+        def summarize(pred_edge):
+            if self.summary and hook is None:
+                self.summary_image({
+                    'val_image': image,
+                    'val_pred_layout': pred.data.squeeze(),
+                    'val_layout': layout.squeeze(),
+                    'val_pred_edge': pred_edge.data,
+                    'val_edge': edge})
 
-        output = self.model(image)
-        _, pred = torch.max(output, 1)
+        layout, edge = target
+        gt_layout, gt_edge = to_var(layout), to_var(edge)
+        score = self.model(to_var(image))
+        _, pred = torch.max(score, 1)
 
-        losses = self.criterion(output, pred, label, edge_map)
-        acc = self.accuracy(pred, label)
+        losses = self.criterion(score, pred, gt_layout, gt_edge, end_hook=summarize)
+        accuracies = self.accuracy(pred, gt_layout)
 
-        return (losses, acc, pred.data) if is_eval else (losses, acc)
+        if hook:
+            hook(pred.data)
+        return losses, accuracies
 
-    def summary_scalar(self, metrics):
+    def summary_scalar(self, metrics, prefix=''):
         for tag, value in metrics.items():
-            self.tf_summary.scalar(tag, value, self.epoch)
+            self.tf_summary.scalar(prefix + tag, value, self.epoch)
 
-    def summary_image(self, pred, target, prefix):
-        label, _ = target
-        self.tf_summary.image(prefix + 'pred', to_numpy(pred.squeeze()),
-                              self.epoch, tag_count_base=self.evaluated_images)
-        self.tf_summary.image(prefix + 'label', to_numpy(label.squeeze()),
-                              self.epoch, tag_count_base=self.evaluated_images)
+    def summary_image(self, images, prefix=''):
+        for tag, image in images.items():
+            self.tf_summary.image(prefix + tag, to_numpy(image), self.epoch,
+                                  tag_count_base=self.evaluated_images)

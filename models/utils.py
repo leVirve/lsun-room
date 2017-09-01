@@ -17,8 +17,8 @@ def save_batched_images(tensors, filenames=None, folder=None):
 
 
 def shrink_edge_width(trainer, train, validate):
-    if (trainer.epoch + 1) % 5:
+    if (trainer.epoch + 1) % 4:
         return
     w = train.dataset.edge_width
-    train.dataset = w * 2 / 3
-    validate.dataset = w * 2 / 3
+    train.dataset.edge_width = w * 2 / 3
+    validate.dataset.edge_width = w * 2 / 3

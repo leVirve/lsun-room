@@ -26,6 +26,7 @@ def main(name, dataset_root,
     print('===> Prepare data loader')
     dataset_args = {'root': dataset_root, 'target_size': image_size}
     loader_args = {'num_workers': workers, 'pin_memory': True}
+
     train_loader = torch.utils.data.DataLoader(
         dataset=ImageFolderDataset(phase='train', **dataset_args),
         batch_size=batch_size, shuffle=True, **loader_args)
@@ -35,17 +36,17 @@ def main(name, dataset_root,
 
     print('===> Prepare model')
     model = models.fcn.FCN(num_classes=5, input_size=image_size)
+
+    criterion = models.loss.LayoutLoss(l1_λ=l1_weight, edge_λ=edge_weight)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    lr_scheduler = ReduceLROnPlateau(optimizer, patience=2, mode='min',
+                                     factor=0.5, min_lr=1e-8, verbose=True)
 
     trainer = models.network.Trainer(
-            name,
-            model,
-            optimizer=optimizer,
-            criterion=models.loss.LayoutLoss(
-                l1_λ=l1_weight, edge_λ=edge_weight),
-            scheduler=ReduceLROnPlateau(
-                optimizer, patience=2, mode='min', min_lr=1e-12, verbose=True)
-        )
+        name, model,
+        optimizer=optimizer,
+        criterion=criterion,
+        scheduler=lr_scheduler)
 
     print('===> Start training')
     trainer.train(

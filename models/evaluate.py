@@ -22,11 +22,9 @@ class EpochHistory():
                 'loss': '%.04f' % losses["loss"].data[0],
                 'miou': '%.04f' % accuracies["miou"]}
 
-    def metric(self, prefix=''):
-        terms = {
-            prefix + k: v / self.len for k, v in self.accuracies.items()}
-        terms.update({
-            prefix + k: v / self.len for k, v in self.losses.items()})
+    def metric(self):
+        terms = {k: v / self.len for k, v in self.accuracies.items()}
+        terms.update({k: v / self.len for k, v in self.losses.items()})
         return terms
 
 
@@ -35,9 +33,7 @@ class LayoutAccuracy():
     def __call__(self, output, target):
         return self.accuracy(output, target)
 
-    ''' `accuracy()`, `semantic_iou()`, `semantic_confusion()` refer from:
-    https://github.com/chainer/chainercv/blob/master/chainercv/evaluations/eval_semantic_segmentation.py
-    '''
+    # Refer from: https://github.com/chainer/chainercv/blob/master/chainercv/evaluations/eval_semantic_segmentation.py
     def accuracy(self, pred_labels, gt_labels):
         confusion = self.semantic_confusion(pred_labels, gt_labels)
         iou = self.semantic_iou(confusion)
@@ -61,10 +57,8 @@ class LayoutAccuracy():
             pred_label = to_numpy(pred_label.view(-1).data)
             gt_label = to_numpy(gt_label.view(-1).data)
 
-            # Count statistics from valid pixels.
             mask = gt_label >= 0
             confusion += np.bincount(
                 n_class * gt_label[mask].astype(int) + pred_label[mask],
                 minlength=n_class**2).reshape((n_class, n_class))
-
         return confusion
