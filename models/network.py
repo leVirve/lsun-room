@@ -81,14 +81,18 @@ class Trainer():
         def to_var(t):
             return Variable(t, volatile=not self.model.training).cuda()
 
-        def summarize(pred_edge):
+        def summarize(pred_edge=None):
             if self.summary and hook is None:
-                self.summary_image({
+                data = {
                     'val_image': image,
                     'val_pred_layout': pred.data.squeeze(),
-                    'val_layout': layout.squeeze(),
-                    'val_pred_edge': pred_edge.data,
-                    'val_edge': edge})
+                    'val_layout': layout.squeeze()}
+                if pred_edge is not None:
+                    data.update({
+                        'val_pred_edge': pred_edge.data,
+                        'val_edge': edge
+                    })
+                self.summary_image(data)
 
         layout, edge = target
         gt_layout, gt_edge = to_var(layout), to_var(edge)

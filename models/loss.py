@@ -58,6 +58,8 @@ class LayoutLoss():
 
     def edge_loss(self, pred, label, end_hook) -> dict:
         if not self.edge_λ:
+            if end_hook:
+                end_hook()
             return {}
         edge = nn.functional.conv2d(
             pred.unsqueeze(1).float(), laplacian_kernel, padding=4, dilation=4)
