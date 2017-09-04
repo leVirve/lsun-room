@@ -25,7 +25,7 @@ class LayoutLoss():
 
     def __call__(self, score, pred, gt_layout, gt_edge, end_hook=None):
         loss_terms = {}
-        loss_terms.update(self.pixelwise_loss(score, gt_layout))
+        loss_terms.update(self.pixelwise_loss(score, gt_layout, gt_edge))
         loss_terms.update(self.edge_loss(pred, gt_edge, end_hook))
 
         loss = loss_terms.get('classification')
@@ -38,10 +38,13 @@ class LayoutLoss():
     def register_trainer(self, trainer):
         self.trainer = trainer
 
-    def pixelwise_loss(self, pred, target) -> dict:
+    def pixelwise_loss(self, pred, target, edge_weight=None) -> dict:
 
         ''' Cross-entropy loss '''
         log_pred = F.log_softmax(pred)
+        if edge_weight is not None:
+            weighted_label = target.clone()
+            weighted_label[edge_weight == 1] *= 2  # weighted
         xent_loss = self.cross_entropy_criterion(log_pred, target)
 
         if not self.l1_λ:
