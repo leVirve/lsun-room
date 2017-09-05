@@ -97,6 +97,8 @@ class ResFCN(nn.Module):
         self.fc = nn.Conv2d(512 * VariantBottleneck.expansion, num_classes, 1)
         self.upscore = nn.ConvTranspose2d(num_classes, num_classes, 64,
                                           stride=32, bias=False)
+        self.drop1 = nn.Dropout2d()
+        self.drop2 = nn.Dropout2d()
         self._model_sugury()
 
     def forward(self, x):
@@ -110,7 +112,9 @@ class ResFCN(nn.Module):
         x = self.resnet.layer3(x)
         x = self.resnet.layer4(x)
 
+        x = self.drop1(x)
         x = self.resnet.avgpool(x)
+        x = self.drop2(x)
         x = self.resnet.fc(x)
         x = self.upscore(x)
 

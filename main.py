@@ -35,7 +35,7 @@ def main(name, dataset_root,
         batch_size=batch_size, **loader_args)
 
     print('===> Prepare model')
-    model = models.fcn.ResFCN(num_classes=5, input_size=image_size)
+    model = models.fcn.ResFCN(num_classes=5, input_size=image_size, base='resnet50')
 
     criterion = models.loss.LayoutLoss(l1_λ=l1_weight, edge_λ=edge_weight)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
