@@ -4,7 +4,7 @@
 
 - Python 3.5+
 - OpenCV 3
-- `scikit-image` and `click`
+- `scikit-image` and `click`, `tqdm`
 
 ## Usage
 
@@ -18,6 +18,11 @@
   - Put `SUN RGB-D Dataset` in folder `../data/sun_rgbd` relative to this project.
     - `images/`: RGB color image `*.jpg` in `train` and `test` respectly.
     - `labels/`: layout ground truth `*.png` in `train` and `test` respectly.
+
+- Toolkit
+
+  - Put `LSUN Room Layout Dataset` toolkit in folder `../lsun_toolkit`
+    - Integrated scripts (TBD)
 
 - Training
 
