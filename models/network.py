@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 from models.evaluate import LayoutAccuracy, EpochHistory
-from models.saver import Saver
+from models.saver import Checkpoint
 from models.utils import to_numpy, shrink_edge_width
 from models.logger import Logger
 from tools import timeit
@@ -22,7 +22,7 @@ class Trainer():
         self.scheduler = scheduler
         self.accuracy = LayoutAccuracy()
         self.tf_summary = Logger('./logs', name=name)
-        self.saver = Saver()
+        self.saver = Checkpoint()
 
         self.dataset_hook = shrink_edge_width
         self.summary = False

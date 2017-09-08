@@ -10,7 +10,16 @@ from datasets.lsun_room.item import DataItems
 from datasets.lsun_room.edge import mapping_func
 
 
+class NamedSample():
+    pass
+
+
 class ImageFolderDataset(dset.ImageFolder):
+
+    # TODO:
+    # - move transform into main script
+    # - make __getitem__ return well-structured object
+    # - not use OpenCV
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -22,6 +31,7 @@ class ImageFolderDataset(dset.ImageFolder):
         self.target_size = target_size
         self.dataset = DataItems(root_dir=root, phase=phase)
         self.filenames = [e.name for e in self.dataset.items]
+        self.num_classes = 5
         self._edge_width = 30
 
     def __getitem__(self, index):
@@ -34,6 +44,33 @@ class ImageFolderDataset(dset.ImageFolder):
     @edge_width.setter
     def edge_width(self, width):
         self._edge_width = int(width) if width > 2 else 2
+
+    def _pil_load(self, name, index):
+        image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
+        label_path = os.path.join(self.dataset.layout_image, '%s.png' % name)
+
+        loader = dset.folder.default_loader
+
+        universial_transform = [
+            transforms.Scale((404, 404)),
+            transforms.ToTensor(),
+        ]
+        transform = transforms.Compose([
+            *universial_transform,
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        target_transform = transforms.Compose([
+            universial_transform,
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        image = transform(loader(image_path))
+        layout = target_transform(loader(label_path))
+        edge = torch.from_numpy(self.load_edge_map(index) / 255).float().sub_(1)
+
+        return NamedSample(image, layout, edge)
 
     def load(self, name, index):
         image_path = os.path.join(self.dataset.image, '%s.jpg' % name)

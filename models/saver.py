@@ -2,7 +2,7 @@ import os
 import torch
 
 
-class Saver():
+class Checkpoint():
 
     def register_trainer(self, trainer):
         self.trainer = trainer
@@ -16,3 +16,8 @@ class Saver():
         state_dict = self.trainer.model.state_dict()
         weight_path = os.path.join(self.root, '%d.pth' % self.trainer.epoch)
         torch.save(state_dict, weight_path)
+        # torch.save({
+        #     'model': self.trainer.model.state_dict(),
+        #     'optimizer': self.trainer.optimizer.state_dict(),
+        #     'epoch', 'arch'
+        # }, weight_path)
