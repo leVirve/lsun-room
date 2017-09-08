@@ -1,16 +1,20 @@
 import hack_path  # noqa
 import time
 
-from lsun_room import Phase, DataItems
-from lsun_room.edge import mapping_func
+import click
+
+from datasets.lsun_room.item import DataItems
+from datasets.lsun_room.edge import mapping_func
 
 
-def main():
+@click.command()
+@click.option('--dataset_root', default='../data/lsun_room/')
+def main(dataset_root):
 
-    for phase in [Phase.TRAIN, Phase.VALIDATE]:
+    for phase in ['train', 'val']:
         print('==> iter for data in %s phase' % phase)
         s = time.time()
-        dataset = DataItems(root_dir='../data', phase=phase)
+        dataset = DataItems(root_dir=dataset_root, phase=phase)
 
         for i, e in enumerate(dataset.items):
             if e.type == 10:

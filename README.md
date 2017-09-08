@@ -61,12 +61,6 @@
 
 - Re-label
 
-  - Output visualized layout image (range from 0-255)
-
-  ```bash
-  python script/re_label.py --visualized
-  ```
-
   - Output layout image (range from 1-5)
 
   ```bash
