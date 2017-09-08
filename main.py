@@ -1,12 +1,16 @@
 import click
 import torch
+import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from PIL import Image
 
 import models
 from models.utils import save_batched_images
+from datasets.transform import ToLabel, Clamp
 from datasets.lsun_room.folder import ImageFolderDataset
 
 torch.backends.cudnn.benchmark = True
+torch.cuda.manual_seed(9487)
 
 
 @click.command()
@@ -24,7 +28,21 @@ def main(name, dataset_root,
          l1_weight, edge_weight, resume):
 
     print('===> Prepare data loader')
-    dataset_args = {'root': dataset_root, 'target_size': image_size}
+    input_transform = transforms.Compose([
+        transforms.Scale(image_size, interpolation=Image.BILINEAR),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    target_transform = transforms.Compose([
+        transforms.Scale(image_size, interpolation=Image.NEAREST),
+        ToLabel(),
+        Clamp(1, label_max=5)
+    ])
+
+    dataset_args = {'root': dataset_root, 'target_size': image_size,
+                    'input_transform': input_transform,
+                    'target_transform': target_transform}
     loader_args = {'num_workers': workers, 'pin_memory': True}
 
     train_loader = torch.utils.data.DataLoader(
@@ -35,7 +53,9 @@ def main(name, dataset_root,
         batch_size=batch_size, **loader_args)
 
     print('===> Prepare model')
-    model = models.fcn.ResFCN(num_classes=5, input_size=image_size, base='resnet50')
+    model = models.fcn.VggFCN(
+                num_classes=train_loader.dataset.num_classes,
+                input_size=image_size)
 
     criterion = models.loss.LayoutLoss(l1_λ=l1_weight, edge_λ=edge_weight)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)

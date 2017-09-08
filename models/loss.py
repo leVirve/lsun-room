@@ -42,9 +42,10 @@ class LayoutLoss():
 
         ''' Cross-entropy loss '''
         log_pred = F.log_softmax(pred)
-        if edge_weight is not None:
-            weighted_label = target.clone()
-            weighted_label[edge_weight == 1] *= 2  # weighted
+        # if edge_weight is not None:
+        #     print('log_pred', log_pred.size())
+        #     print('edge_weight', edge_weight.size())
+        #     log_pred[edge_weight == 1] *= 2  # weighted
         xent_loss = self.cross_entropy_criterion(log_pred, target)
 
         if not self.l1_λ:
@@ -73,24 +74,5 @@ class LayoutLoss():
 
         if end_hook:
             end_hook(edge)
-
-        return {'edge': edge_loss}
-
-    def _cv2_edge_loss(self, pred, edge_map) -> dict:
-        if not self.edge_λ:
-            return {}
-
-        ''' Edge binary cross-entropy '''
-        _, pred = torch.max(pred, 1)
-        pred = pred.float().squeeze(1)
-
-        imgs = pred.data.cpu().numpy()
-        for i, img in enumerate(imgs):
-            pred[i].data = torch.from_numpy(cv2.Laplacian(img, cv2.CV_32F))
-
-        mask = pred != 0
-        pred[mask] = 1
-        edge_map = Variable(edge_map.float().cuda())
-        edge_loss = self.edge_criterion(pred[mask], edge_map[mask].float())
 
         return {'edge': edge_loss}

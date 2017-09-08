@@ -38,9 +38,9 @@ class Trainer():
             history = EpochHistory(length=len(train_loader))
             progress = tqdm.tqdm(train_loader)
 
-            for image, *target in progress:
+            for data in progress:
                 self.optimizer.zero_grad()
-                losses, accuracies = self.forward(image, target)
+                losses, accuracies = self.forward(data)
                 losses['loss'].backward()
                 self.optimizer.step()
 
@@ -62,13 +62,13 @@ class Trainer():
         history = EpochHistory(length=len(data_loader))
 
         self.evaluated_images = 0
-        for i, (image, *target) in enumerate(data_loader):
+        for i, data in enumerate(data_loader):
             self.summary = self.evaluated_images < self.max_summary_image
             losses, accuracies = self.forward(
-                image, target,
+                data,
                 hook=(lambda x: callback(i, to_numpy(x))) if callback else None)
             history.add(losses, accuracies)
-            self.evaluated_images += image.size(0)
+            self.evaluated_images += len(data)
 
         metrics = history.metric()
         print('--> Epoch#%d' % (self.epoch + 1), end=' ')
@@ -76,7 +76,7 @@ class Trainer():
               metrics['loss'], metrics['pixel_accuracy'], metrics['miou']))
         return metrics
 
-    def forward(self, image, target, hook=None):
+    def forward(self, item, hook=None):
 
         def to_var(t):
             return Variable(t, volatile=not self.model.training).cuda()
@@ -84,19 +84,18 @@ class Trainer():
         def summarize(pred_edge=None):
             if self.summary and hook is None:
                 data = {
-                    'val_image': image,
+                    'val_image': item['image'],
                     'val_pred_layout': pred.data.squeeze(),
-                    'val_layout': layout.squeeze()}
+                    'val_layout': item['layout'].squeeze()}
                 if pred_edge is not None:
                     data.update({
                         'val_pred_edge': pred_edge.data,
-                        'val_edge': edge
+                        'val_edge': item['edge']
                     })
                 self.summary_image(data)
 
-        layout, edge = target
-        gt_layout, gt_edge = to_var(layout), to_var(edge)
-        score = self.model(to_var(image))
+        gt_layout, gt_edge = to_var(item['layout']), to_var(item['edge'])
+        score = self.model(to_var(item['image']))
         _, pred = torch.max(score, 1)
 
         losses = self.criterion(score, pred, gt_layout, gt_edge, end_hook=summarize)
