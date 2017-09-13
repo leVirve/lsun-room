@@ -1,4 +1,3 @@
-import cv2
 import torch
 import numpy as np
 import torch.nn as nn
@@ -14,39 +13,39 @@ laplacian_kernel = Variable(torch.from_numpy(
     ).unsqueeze(0).unsqueeze(0).float()).cuda()
 
 
-class LayoutLoss():
+class CrossEntropyLoss2d(nn.Module):
+
+    def __init__(self, weight=None):
+        super().__init__()
+        self.loss = nn.NLLLoss2d(weight)
+
+    def forward(self, outputs, targets):
+        return self.loss(F.log_softmax(outputs), targets)
+
+
+class SegmentLoss():
 
     def __init__(self, l1_λ=0.1, edge_λ=0.1, weight=None):
         self.l1_λ = l1_λ
         self.edge_λ = edge_λ
-        self.cross_entropy_criterion = nn.NLLLoss2d(weight=weight).cuda()
-        self.l1_criterion = nn.L1Loss().cuda()
-        self.edge_criterion = nn.MSELoss().cuda()
+        self.cross_entropy_criterion = CrossEntropyLoss2d(weight=weight).cuda()
 
-    def __call__(self, score, pred, gt_layout, gt_edge, end_hook=None):
-        loss_terms = {}
-        loss_terms.update(self.pixelwise_loss(score, gt_layout, gt_edge))
-        loss_terms.update(self.edge_loss(pred, gt_edge, end_hook))
+    def __call__(self, score, pred, gt_layout, _, end_hook=None):
+        loss_terms = self.pixelwise_loss(score, gt_layout)
 
         loss = loss_terms.get('classification')
         loss += self.l1_λ * loss_terms.get('seg_area', 0)
-        loss += self.edge_λ * loss_terms.get('edge', 0)
         loss_terms['loss'] = loss
+
+        if end_hook:
+            end_hook()
 
         return loss_terms
 
-    def register_trainer(self, trainer):
-        self.trainer = trainer
-
-    def pixelwise_loss(self, pred, target, edge_weight=None) -> dict:
+    def pixelwise_loss(self, pred, target) -> dict:
 
         ''' Cross-entropy loss '''
-        log_pred = F.log_softmax(pred)
-        # if edge_weight is not None:
-        #     print('log_pred', log_pred.size())
-        #     print('edge_weight', edge_weight.size())
-        #     log_pred[edge_weight == 1] *= 2  # weighted
-        xent_loss = self.cross_entropy_criterion(log_pred, target)
+        xent_loss = self.cross_entropy_criterion(pred, target)
 
         if not self.l1_λ:
             return {'classification': xent_loss}
@@ -60,11 +59,42 @@ class LayoutLoss():
 
         return {'classification': xent_loss, 'seg_area': l1_loss}
 
-    def edge_loss(self, pred, label, end_hook) -> dict:
+    def register_trainer(self, trainer):
+        self.trainer = trainer
+
+
+class LayoutLoss(SegmentLoss):
+
+    def __init__(self, l1_λ=0.1, edge_λ=0.1, weight=None):
+        self.l1_λ = l1_λ
+        self.edge_λ = edge_λ
+        self.cross_entropy_criterion = CrossEntropyLoss2d(weight=weight).cuda()
+        self.l1_criterion = nn.L1Loss().cuda()
+        self.edge_criterion = nn.MSELoss().cuda()
+
+    def __call__(self, score, pred, gt_layout, item, end_hook=None):
+        loss_terms = {}
+        loss_terms.update(self.pixelwise_loss(score, gt_layout))
+        loss_terms.update(self.edge_loss(pred, item, end_hook))
+
+        loss = loss_terms.get('classification')
+        loss += self.l1_λ * loss_terms.get('seg_area', 0)
+        loss += self.edge_λ * loss_terms.get('edge', 0)
+        loss_terms['loss'] = loss
+
+        edge_map = None
+        if '_edge_map' in loss_terms:
+            edge_map = loss_terms.pop('_edge_map')
+        if end_hook:
+            end_hook(edge_map)
+
+        return loss_terms
+
+    def edge_loss(self, pred, item, end_hook) -> dict:
         if not self.edge_λ:
-            if end_hook:
-                end_hook()
             return {}
+
+        label = Variable(item['edge'], volatile=not self.trainer.model.training).cuda()
         edge = nn.functional.conv2d(
             pred.unsqueeze(1).float(), laplacian_kernel, padding=4, dilation=4)
 
@@ -75,4 +105,4 @@ class LayoutLoss():
         if end_hook:
             end_hook(edge)
 
-        return {'edge': edge_loss}
+        return {'edge': edge_loss, '_edge_map': edge}

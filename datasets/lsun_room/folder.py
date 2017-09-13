@@ -12,12 +12,13 @@ def load_image(path):
 
 class ImageFolderDataset(dset.ImageFolder):
 
+    num_classes = 5
+
     def __init__(self, root, target_size, phase,
                  input_transform=None, target_transform=None):
         self.target_size = target_size
         self.input_transform = input_transform
         self.target_transform = target_transform
-        self.num_classes = 5
         self._edge_width = 30
 
         self.dataset = DataItems(root_dir=root, phase=phase)
@@ -43,7 +44,7 @@ class ImageFolderDataset(dset.ImageFolder):
         layout = self.target_transform(layout)
         edge = torch.from_numpy(self.load_edge_map(index) / 255).float()
 
-        return {'image': image, 'layout': layout, 'edge': edge,
+        return {'image': image, 'label': layout, 'edge': edge,
                 'type': item.type}
 
     def load_edge_map(self, index):

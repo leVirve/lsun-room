@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from models.evaluate import LayoutAccuracy, EpochHistory
+from models.evaluate import EpochHistory
 from models.saver import Checkpoint
 from models.utils import to_numpy, shrink_edge_width
 from models.logger import Logger
@@ -14,14 +14,14 @@ class Trainer():
 
     max_summary_image = 20
 
-    def __init__(self, name, model, optimizer, criterion, scheduler):
+    def __init__(self, name, model, optimizer, criterion, accuracy, scheduler):
         self.name = name
         self.model = nn.DataParallel(model).cuda()
         self.criterion = criterion
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.accuracy = LayoutAccuracy()
-        self.tf_summary = Logger('./logs', name=name)
+        self.accuracy = accuracy
+        self.tf_summary = Logger('./logs_lip', name=name)
         self.saver = Checkpoint()
 
         self.dataset_hook = shrink_edge_width
@@ -51,7 +51,7 @@ class Trainer():
             valid_metrics = self.evaluate(validate_loader)
 
             self.scheduler.step(valid_metrics['loss'])
-            self.dataset_hook(self, train_loader, validate_loader)
+            # self.dataset_hook(self, train_loader, validate_loader)
             self.summary_scalar(train_metrics)
             self.summary_scalar(valid_metrics, prefix='val_')
             self.saver.save()
@@ -85,8 +85,8 @@ class Trainer():
             if self.summary and hook is None:
                 data = {
                     'val_image': item['image'],
-                    'val_pred_layout': pred.data.squeeze(),
-                    'val_layout': item['layout'].squeeze()}
+                    'val_pred_label': pred.data.squeeze(),
+                    'val_label': item['label'].squeeze()}
                 if pred_edge is not None:
                     data.update({
                         'val_pred_edge': pred_edge.data,
@@ -94,12 +94,12 @@ class Trainer():
                     })
                 self.summary_image(data)
 
-        gt_layout, gt_edge = to_var(item['layout']), to_var(item['edge'])
+        label = to_var(item['label'])
         score = self.model(to_var(item['image']))
         _, pred = torch.max(score, 1)
 
-        losses = self.criterion(score, pred, gt_layout, gt_edge, end_hook=summarize)
-        accuracies = self.accuracy(pred, gt_layout)
+        losses = self.criterion(score, pred, label, item, end_hook=summarize)
+        accuracies = self.accuracy(pred, label)
 
         if hook:
             hook(pred.data)

@@ -28,12 +28,15 @@ class EpochHistory():
         return terms
 
 
-class LayoutAccuracy():
+class Accuracy():
+
+    def __init__(self, num_classes=5):
+        self.num_classes = num_classes
 
     def __call__(self, output, target):
         return self.accuracy(output, target)
 
-    # Refer from: https://github.com/chainer/chainercv/blob/master/chainercv/evaluations/eval_semantic_segmentation.py
+    # Refer from: chainer/chainercv//eval_semantic_segmentation.py
     def accuracy(self, pred_labels, gt_labels):
         confusion = self.semantic_confusion(pred_labels, gt_labels)
         iou = self.semantic_iou(confusion)
@@ -50,7 +53,8 @@ class LayoutAccuracy():
         iou = np.diag(confusion) / iou_denominator
         return iou
 
-    def semantic_confusion(self, pred_labels, gt_labels, n_class=5):
+    def semantic_confusion(self, pred_labels, gt_labels):
+        n_class = self.num_classes
         confusion = np.zeros((n_class, n_class), dtype=np.int64)
 
         for pred_label, gt_label in zip(pred_labels, gt_labels):
