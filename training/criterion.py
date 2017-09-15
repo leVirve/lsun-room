@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
+from training.utils import to_numpy
+
 
 laplacian_kernel = Variable(torch.from_numpy(
     np.array([
@@ -106,3 +108,43 @@ class LayoutLoss(SegmentLoss):
             end_hook(edge)
 
         return {'edge': edge_loss, '_edge_map': edge}
+
+
+class Accuracy():
+
+    def __init__(self, num_classes=5):
+        self.num_classes = num_classes
+
+    def __call__(self, output, target):
+        return self.accuracy(output, target)
+
+    # Refer from: chainer/chainercv//eval_semantic_segmentation.py
+    def accuracy(self, pred_labels, gt_labels):
+        confusion = self.semantic_confusion(pred_labels, gt_labels)
+        iou = self.semantic_iou(confusion)
+        pixel_accuracy = np.diag(confusion).sum() / confusion.sum()
+        class_accuracy = np.diag(confusion) / np.sum(confusion, axis=1)
+
+        return {'miou': np.nanmean(iou),
+                'pixel_accuracy': pixel_accuracy,
+                'mean_class_accuracy': np.nanmean(class_accuracy)}
+
+    def semantic_iou(self, confusion):
+        iou_denominator = (confusion.sum(axis=1) + confusion.sum(axis=0)
+                           - np.diag(confusion))
+        iou = np.diag(confusion) / iou_denominator
+        return iou
+
+    def semantic_confusion(self, pred_labels, gt_labels):
+        n_class = self.num_classes
+        confusion = np.zeros((n_class, n_class), dtype=np.int64)
+
+        for pred_label, gt_label in zip(pred_labels, gt_labels):
+            pred_label = to_numpy(pred_label.view(-1).data)
+            gt_label = to_numpy(gt_label.view(-1).data)
+
+            mask = gt_label >= 0
+            confusion += np.bincount(
+                n_class * gt_label[mask].astype(int) + pred_label[mask],
+                minlength=n_class**2).reshape((n_class, n_class))
+        return confusion

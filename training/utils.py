@@ -1,9 +1,11 @@
 import os
 from io import BytesIO
+from collections import defaultdict
 
 import scipy.misc
 import numpy as np
 import tensorflow as tf
+np.seterr(divide='ignore', invalid='ignore')
 
 
 def to_numpy(output):
@@ -25,6 +27,29 @@ def shrink_edge_width(trainer, train, validate):
     w = train.dataset.edge_width
     train.dataset.edge_width = w * 2 / 3
     validate.dataset.edge_width = w * 2 / 3
+
+
+class EpochHistory():
+
+    def __init__(self, length):
+        self.len = length
+        self.losses = defaultdict(float)
+        self.accuracies = defaultdict(float)
+
+    def add(self, losses, accuracies):
+        for k, v in accuracies.items():
+            self.accuracies[k] += v
+        for k, v in losses.items():
+            self.losses[k] += v.data[0]
+
+        return {'accuracy': '%.04f' % accuracies["pixel_accuracy"],
+                'loss': '%.04f' % losses["loss"].data[0],
+                'miou': '%.04f' % accuracies["miou"]}
+
+    def metric(self):
+        terms = {k: v / self.len for k, v in self.accuracies.items()}
+        terms.update({k: v / self.len for k, v in self.losses.items()})
+        return terms
 
 
 class Logger(object):

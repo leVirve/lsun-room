@@ -4,8 +4,8 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from PIL import Image
 
-import models
-from models.utils import Logger, save_batched_images, shrink_edge_width
+import training
+from training.utils import Logger, save_batched_images, shrink_edge_width
 from datasets.transform import ToLabel, Clamp
 
 torch.backends.cudnn.benchmark = True
@@ -67,20 +67,20 @@ def main(name, dataset, dataset_root, log_dir,
 
     print('===> Prepare model')
     if dataset == 'lsun_room':
-        Criterion = models.loss.LayoutLoss
+        Criterion = training.criterion.LayoutLoss
     else:
-        Criterion = models.loss.SegmentLoss
+        Criterion = training.criterion.SegmentLoss
 
     logger = Logger(log_dir, name=name)
-    model = models.fcn.VggFCN(num_classes=num_classes, input_size=image_size)
+    model = training.models.VggFCN(num_classes=num_classes, input_size=image_size)
 
-    accuracy = models.evaluate.Accuracy(num_classes=num_classes)
+    accuracy = training.criterion.Accuracy(num_classes=num_classes)
     criterion = Criterion(l1_λ=l1_weight, edge_λ=edge_weight)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     lr_scheduler = ReduceLROnPlateau(optimizer, patience=2, mode='min',
                                      factor=0.5, min_lr=1e-8, verbose=True)
 
-    trainer = models.network.Trainer(
+    agent = training.trainer.Trainer(
         model,
         optimizer=optimizer,
         criterion=criterion,
@@ -89,14 +89,14 @@ def main(name, dataset, dataset_root, log_dir,
         logger=logger)
 
     if dataset == 'lsun_room':
-        trainer.dataset_hook = shrink_edge_width
+        agent.dataset_hook = shrink_edge_width
 
     if resume:
-        trainer.saver.load(resume)
+        agent.saver.load(resume)
         print('==> load checkpoint at', resume)
 
     print('===> Start training')
-    trainer.train(
+    agent.train(
         train_loader=train_loader,
         validate_loader=validate_loader,
         epochs=epochs)
@@ -108,7 +108,7 @@ def main(name, dataset, dataset_root, log_dir,
         s, e = batch_id * batch_size, (batch_id + 1) * batch_size
         save_batched_images(imgs, filenames=fnames[s:e], folder=name)
 
-    trainer.evaluate(
+    agent.evaluate(
         validate_loader,
         callback=save_prediction)
 

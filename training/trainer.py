@@ -3,9 +3,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from models.evaluate import EpochHistory
-from models.saver import Checkpoint
-from models.utils import to_numpy
+from training.saver import Checkpoint
+from training.utils import EpochHistory, to_numpy
 from tools import timeit
 
 

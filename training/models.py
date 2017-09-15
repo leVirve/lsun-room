@@ -4,7 +4,7 @@ import torch.nn.init as weight_init
 from torch.autograd import Variable
 import torchvision.models as models
 
-from models.utils import to_numpy
+from training.utils import to_numpy
 from tools import timeit
 
 
