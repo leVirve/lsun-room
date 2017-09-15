@@ -5,8 +5,7 @@ from torch.autograd import Variable
 
 from models.evaluate import EpochHistory
 from models.saver import Checkpoint
-from models.utils import to_numpy, shrink_edge_width
-from models.logger import Logger
+from models.utils import to_numpy
 from tools import timeit
 
 
@@ -14,17 +13,17 @@ class Trainer():
 
     max_summary_image = 20
 
-    def __init__(self, name, model, optimizer, criterion, accuracy, scheduler):
-        self.name = name
+    def __init__(self, model, optimizer, criterion, accuracy, scheduler, logger):
         self.model = nn.DataParallel(model).cuda()
         self.criterion = criterion
         self.optimizer = optimizer
         self.scheduler = scheduler
         self.accuracy = accuracy
-        self.tf_summary = Logger('./logs_lip', name=name)
+        self.logger = logger
         self.saver = Checkpoint()
 
-        self.dataset_hook = shrink_edge_width
+        self.start_epoch = 0
+        self.dataset_hook = None
         self.summary = False
         self.evaluated_images = 0
 
@@ -34,7 +33,7 @@ class Trainer():
     def train(self, train_loader, validate_loader, epochs):
         for epoch in range(epochs):
             self.model.train()
-            self.epoch = epoch
+            self.epoch = self.start_epoch + epoch
             history = EpochHistory(length=len(train_loader))
             progress = tqdm.tqdm(train_loader)
 
@@ -44,14 +43,15 @@ class Trainer():
                 losses['loss'].backward()
                 self.optimizer.step()
 
-                progress.set_description('Epoch#%d' % (epoch + 1))
+                progress.set_description('Epoch#%d' % (self.epoch + 1))
                 progress.set_postfix(history.add(losses, accuracies))
 
             train_metrics = history.metric()
             valid_metrics = self.evaluate(validate_loader)
 
+            if self.dataset_hook:
+                self.dataset_hook(self, train_loader, validate_loader)
             self.scheduler.step(valid_metrics['loss'])
-            # self.dataset_hook(self, train_loader, validate_loader)
             self.summary_scalar(train_metrics)
             self.summary_scalar(valid_metrics, prefix='val_')
             self.saver.save()
@@ -82,17 +82,15 @@ class Trainer():
             return Variable(t, volatile=not self.model.training).cuda()
 
         def summarize(pred_edge=None):
-            if self.summary and hook is None:
-                data = {
-                    'val_image': item['image'],
+            if not self.summary or hook:
+                return
+            data = {'val_image': item['image'],
                     'val_pred_label': pred.data.squeeze(),
                     'val_label': item['label'].squeeze()}
-                if pred_edge is not None:
-                    data.update({
-                        'val_pred_edge': pred_edge.data,
-                        'val_edge': item['edge']
-                    })
-                self.summary_image(data)
+            if pred_edge is not None:
+                data.update({'val_pred_edge': pred_edge.data,
+                             'val_edge': item['edge']})
+            self.summary_image(data)
 
         label = to_var(item['label'])
         score = self.model(to_var(item['image']))
@@ -107,9 +105,9 @@ class Trainer():
 
     def summary_scalar(self, metrics, prefix=''):
         for tag, value in metrics.items():
-            self.tf_summary.scalar(prefix + tag, value, self.epoch)
+            self.logger.scalar(prefix + tag, value, self.epoch)
 
     def summary_image(self, images, prefix=''):
         for tag, image in images.items():
-            self.tf_summary.image(prefix + tag, to_numpy(image), self.epoch,
-                                  tag_count_base=self.evaluated_images)
+            self.logger.image(prefix + tag, to_numpy(image), self.epoch,
+                              tag_count_base=self.evaluated_images)
