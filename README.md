@@ -33,7 +33,7 @@
 
   Options:
     --name TEXT
-    --dataset [lsun_room | lip | others]
+    --dataset [lsun_room | others]
     --dataset_root TEXT
     --log_dir TEXT
     --image_size <INTEGER INTEGER>

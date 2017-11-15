@@ -33,8 +33,6 @@ def main(name, dataset, dataset_root, log_dir,
             from datasets.lsun_room.folder import ImageFolderDataset
         elif dataset_name == 'sun_rgbd':
             pass
-        elif dataset_name == 'lip':
-            from datasets.lip.folder import ImageFolderDataset
         if len(kwargs) == 0:
             return ImageFolderDataset.num_classes
         return ImageFolderDataset(**kwargs)
