@@ -1,31 +1,33 @@
-import os
-
-import numpy as np
-import cv2
 import torch
 import torchvision.datasets as dset
-import torchvision.transforms as transforms
+from PIL import Image
 
 from datasets.lsun_room.item import DataItems
 from datasets.lsun_room.edge import mapping_func
 
 
+def load_image(path):
+    return Image.open(path)
+
+
 class ImageFolderDataset(dset.ImageFolder):
 
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    num_classes = 5
 
-    def __init__(self, root, target_size, phase):
+    def __init__(self, root, target_size, phase,
+                 input_transform=None, target_transform=None):
         self.target_size = target_size
+        self.input_transform = input_transform
+        self.target_transform = target_transform
+        self._edge_width = 30
+
         self.dataset = DataItems(root_dir=root, phase=phase)
         self.filenames = [e.name for e in self.dataset.items]
+        self.items = self.dataset.items
         self._edge_width = 30
 
     def __getitem__(self, index):
-        return self.load(self.filenames[index], index)
+        return self.load(self.items[index], index)
 
     @property
     def edge_width(self):
@@ -35,23 +37,15 @@ class ImageFolderDataset(dset.ImageFolder):
     def edge_width(self, width):
         self._edge_width = int(width) if width > 2 else 2
 
-    def load(self, name, index):
-        image_path = os.path.join(self.dataset.image, '%s.jpg' % name)
-        label_path = os.path.join(self.dataset.layout_image, '%s.png' % name)
+    def load(self, item, index):
+        image = load_image(item.image_path).convert('RGB')
+        layout = load_image(item.layout_path)
+        image = self.input_transform(image)
+        layout = self.target_transform(layout)
+        edge = torch.from_numpy(self.load_edge_map(index) / 255).float()
 
-        img = cv2.imread(image_path)[:, :, ::-1]
-        lbl = cv2.imread(label_path, 0)
-        edge = self.load_edge_map(index) / 255
-
-        img = cv2.resize(img, self.target_size, cv2.INTER_LINEAR)
-        lbl = cv2.resize(lbl, self.target_size, cv2.INTER_NEAREST)
-
-        img = self.transform(img)
-        lbl = np.clip(lbl, 1, 5) - 1
-        lbl = torch.from_numpy(lbl).long()
-        edge = torch.from_numpy(edge).float()
-
-        return img, lbl, edge
+        return {'image': image, 'label': layout, 'edge': edge,
+                'type': item.type}
 
     def load_edge_map(self, index):
         e = self.dataset.items[index]

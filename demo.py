@@ -5,7 +5,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import numpy as np
 
-from models.fcn import FCN
+from training.models import VggFCN
 from tools import timeit, label_colormap
 
 torch.backends.cudnn.benchmark = True
@@ -31,8 +31,8 @@ class Demo():
     @timeit
     def load_model(self, weight):
         model = nn.DataParallel(
-                FCN(num_classes=5, input_size=self.input_size,
-                    pretrained=False)).cuda()
+                VggFCN(num_classes=5, input_size=self.input_size,
+                       pretrained=False)).cuda()
         model.load_state_dict(torch.load(weight))
         return model
 

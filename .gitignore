@@ -1,7 +1,8 @@
 .ipynb_checkpoints/
 .vscode/
+.idea/
 output/
-logs/
+logs*/
 
 *.pyc
 *.log

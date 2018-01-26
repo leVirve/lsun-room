@@ -33,7 +33,9 @@
 
   Options:
     --name TEXT
+    --dataset [lsun_room | others]
     --dataset_root TEXT
+    --log_dir TEXT
     --image_size <INTEGER INTEGER>
     --epochs INTEGER
     --batch_size INTEGER
@@ -55,6 +57,12 @@
     --weight TEXT
     --input_size <INTEGER INTEGER>.
 
+  ```
+
+- Evaluate with offical Matlab toolkit
+
+  ```bash
+  matlab -nojvm -nodisplay -nosplash -r "demo('$EXPERIMENT_OUTPUT_FODLER'); exit;"
   ```
 
 ## Tools

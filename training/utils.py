@@ -1,17 +1,65 @@
-# Code referenced from https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/04-utils/tensorboard/logger.py
 import os
 from io import BytesIO
+from collections import defaultdict
 
-import numpy as np
 import scipy.misc
-
+import numpy as np
 import tensorflow as tf
+np.seterr(divide='ignore', invalid='ignore')
+
+
+def to_numpy(output):
+    return output.cpu().numpy()
+
+
+def save_batched_images(tensors, filenames=None, folder=None):
+    root_folder = 'output/layout/%s/' % folder
+    os.makedirs(root_folder, exist_ok=True)
+
+    for fname, img in zip(filenames, tensors):
+        path = os.path.join(root_folder, '%s.png' % fname)
+        scipy.misc.imsave(path, img)
+
+
+def shrink_edge_width(trainer, train, validate):
+    if (trainer.epoch + 1) % 4:
+        return
+    w = train.dataset.edge_width
+    train.dataset.edge_width = w * 2 / 3
+    validate.dataset.edge_width = w * 2 / 3
+
+
+class EpochHistory():
+
+    def __init__(self, length):
+        self.len = length
+        self.losses = defaultdict(float)
+        self.accuracies = defaultdict(float)
+
+    def add(self, losses, accuracies):
+        for k, v in accuracies.items():
+            self.accuracies[k] += v
+        for k, v in losses.items():
+            self.losses[k] += v.data[0]
+
+        return {'accuracy': '%.04f' % accuracies["pixel_accuracy"],
+                'loss': '%.04f' % losses["loss"].data[0],
+                'miou': '%.04f' % accuracies["miou"]}
+
+    def metric(self):
+        terms = {k: v / self.len for k, v in self.accuracies.items()}
+        terms.update({k: v / self.len for k, v in self.losses.items()})
+        return terms
 
 
 class Logger(object):
+    '''Code referenced from
+    yunjey/pytorch-tutorial//tensorboard/logger.py
+    '''
 
     def __init__(self, log_dir, name=None):
         """Create a summary writer logging to log_dir."""
+        self.name = name
         self.writer = tf.summary.FileWriter(os.path.join(log_dir, name))
 
     def scalar(self, tag, value, step):
@@ -20,7 +68,7 @@ class Logger(object):
         self.writer.add_summary(summary, step)
 
     def image(self, tag, images, step, tag_count_base=0):
-        """Log a list of images."""
+        """Log list of images."""
 
         def to_summary(img):
             s = BytesIO()
