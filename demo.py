@@ -5,7 +5,7 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import numpy as np
 
-from models.fcn import VggFCN
+from training.models import VggFCN
 from tools import timeit, label_colormap
 
 torch.backends.cudnn.benchmark = True
