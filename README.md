@@ -1,9 +1,13 @@
-# LSUN Room Layout Estimation
+# General Indoor Layout Estimation from a Single Image
+
+## LSUN Room Layout Estimation
+
+![one_lsun_result_banner](./doc/banner.png)
 
 ## Prerequisite
 
-- Python 3.5+
-- OpenCV 3
+- Python 3.6+
+- [OneGAN](https://github.com/leVirve/OneGAN) >= `0.3.0`
 - `scikit-image` and `click`, `tqdm`
 
 ## Usage
