@@ -1,6 +1,8 @@
 .ipynb_checkpoints/
 .vscode/
 .idea/
+.eggs/
+*.egg-info/
 output/
 logs*/
 
