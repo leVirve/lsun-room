@@ -1,69 +1,62 @@
-import cv2
 import click
+import cv2
+import onegan
 import torch
-import torch.nn as nn
-import torchvision.transforms as transforms
-import numpy as np
+import torchvision.transforms as T
+from PIL import Image
 
-from training.models import VggFCN
-from tools import timeit, label_colormap
+from trainer.賣扣老師 import build_resnet101_FCN
 
 torch.backends.cudnn.benchmark = True
 
 
-class Demo():
-
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+class Predictor:
 
     def __init__(self, input_size, weight=None):
-        self.input_size = input_size
-        self.num_class = 5
-        self.model = self.load_model(weight)
-        self.cmap = self.create_camp()
+        self.model = self.build_model(weight)
+        self.colorizer = onegan.extension.Colorizer(
+            colors=[
+                [249, 69, 93], [255, 229, 170], [144, 206, 181],
+                [81, 81, 119], [241, 247, 210]])
+        self.transform = T.Compose([
+            T.Resize(input_size),
+            T.ToTensor(),
+            T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5])
+        ])
 
-    def create_camp(self):
-        return label_colormap(self.num_class + 1)[1:]
+    def build_model(self, weight_path, joint_class=False):
+        model = build_resnet101_FCN(pretrained=False, nb_classes=37, stage_2=True, joint_class=joint_class)
+        weight = onegan.utils.export_checkpoint_weight(weight_path)
+        model.load_state_dict(weight)
+        model.eval()
+        return model.cuda()
 
-    @timeit
-    def load_model(self, weight):
-        model = nn.DataParallel(
-                VggFCN(num_classes=5, input_size=self.input_size,
-                       pretrained=False)).cuda()
-        model.load_state_dict(torch.load(weight))
-        return model
-
-    @timeit
+    @onegan.utils.timeit
     def process(self, raw):
 
-        def output_label(output):
-            label = np.zeros((*self.input_size, 3))
-            for lbl in range(self.num_class):
-                label[output.squeeze() == lbl] = self.cmap[lbl]
-            return label
+        def _batched_process(batched_img):
+            score, _ = self.model(onegan.utils.to_var(batched_img))
+            _, output = torch.max(score, 1)
 
-        img = cv2.resize(raw, self.input_size)
-        batched_img = self.transform(img).unsqueeze(0).cuda()
+            image = (batched_img / 2 + .5)
+            layout = self.colorizer.apply(output.data.cpu())
+            return image * .6 + layout * .4
 
-        output = self.model.module.predict(batched_img)
-        label = output_label(output)
-
-        label = cv2.resize(label, (raw.shape[1], raw.shape[0]))
-
-        return raw.astype(np.float32) / 255 * 0.5 + label
+        img = Image.fromarray(raw)
+        batched_img = self.transform(img).unsqueeze(0)
+        canvas = _batched_process(batched_img)
+        result = canvas.squeeze().permute(1, 2, 0).numpy()
+        return cv2.resize(result, (raw.shape[1], raw.shape[0]))
 
 
 @click.command()
 @click.option('--device', default=0)
-@click.option('--video', default='')
-@click.option('--weight', default='output/weight/vgg_bn_new/24.pth')
-@click.option('--input_size', default=(404, 404), type=(int, int))
+@click.option('--video', type=click.Path(exists=True))
+@click.option('--weight', type=click.Path(exists=True))
+@click.option('--input_size', default=(320, 320), type=(int, int))
 def main(device, video, weight, input_size):
 
-    demo = Demo(input_size, weight=weight)
+    demo = Predictor(input_size, weight=weight)
 
     reader = video if video else device
     cap = cv2.VideoCapture(reader)

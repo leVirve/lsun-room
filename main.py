@@ -23,6 +23,21 @@ def create_dataset(args):
     return Dataset('train', args=args).to_loader(args=args), Dataset('val', args=args).to_loader(args=args)
 
 
+def create_model(args):
+    return {
+        'vgg': lambda: VggFCN(
+            num_class=args.num_class, input_size=(args.image_size, args.image_size), pretrained=True, base='vgg16_bn'),
+        'lavgg': lambda: LaFCN(
+            num_classes=args.num_class, input_size=None, pretrained=True, base='vgg16_bn'),
+        'resnet': lambda: ResFCN(
+            num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
+        'drn': lambda: DilatedResFCN(
+            num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
+        'mike': lambda: build_resnet101_FCN(
+            pretrained=True, nb_classes=37, stage_2=True, joint_class=not args.disjoint_class)
+    }[args.arch]()
+
+
 def create_optim(args, model, optim='sgd'):
     return {
         'adam': lambda: torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.5, 0.999)),
@@ -51,14 +66,7 @@ def main(args):
     log.info(''.join([f'\n-- {k}: {v}' for k, v in vars(args).items()]))
 
     train_loader, val_loader = create_dataset(args)
-
-    model = {
-        'vgg': lambda args: VggFCN(num_class=args.num_class, input_size=(args.image_size, args.image_size), pretrained=True, base='vgg16_bn'),
-        'lavgg': lambda args: LaFCN(num_classes=args.num_class, input_size=None, pretrained=True, base='vgg16_bn'),
-        'resnet': lambda args: ResFCN(num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
-        'drn': lambda args: DilatedResFCN(num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
-        'mike': lambda args: build_resnet101_FCN(pretrained=True, nb_classes=37, stage_2=True, joint_class=not args.disjoint_class)
-    }[args.arch](args)
+    model = create_model(args)
 
     if args.phase == 'train':
         training_estimator = core.training_estimator(
