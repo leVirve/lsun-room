@@ -91,7 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--image_size', type=int)
     parser.add_argument('--use_edge', action='store_true')
     parser.add_argument('--use_corner', action='store_true')
-    parser.add_argument('--datafold', type=int, default=2)
+    parser.add_argument('--datafold', type=int, default=1)
 
     # outout
     parser.add_argument('--tri_visual', action='store_true')
