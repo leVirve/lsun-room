@@ -15,4 +15,4 @@ eval_search:
 	python main.py \
 		--phase eval_search \
 		--datafold 1 --batch_size 16 --worker 8 \
-		--arch mike --pretrain_path output/checkpoint/M-mike-l1.0-e.0/
+		--arch mike --pretrain_path output/checkpoint/M-mike-l1.2/

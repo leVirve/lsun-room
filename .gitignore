@@ -3,6 +3,7 @@
 .idea/
 .eggs/
 *.egg-info/
+sandbox/
 output/
 logs*/
 

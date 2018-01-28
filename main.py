@@ -4,9 +4,9 @@ import logging
 import torch
 import onegan
 
-import core
-from 賣扣老師 import build_resnet101_FCN
-from model import ResFCN, VggFCN, LaFCN, DilatedResFCN
+from trainer import core
+from trainer.賣扣老師 import build_resnet101_FCN
+from trainer.model import ResFCN, VggFCN, LaFCN, DilatedResFCN
 
 
 def create_dataset(args):
