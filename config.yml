@@ -1,0 +1,8 @@
+epoch: 30
+batch_size: 8
+lr: 0.0001
+worker: 8
+
+image_size: 320
+
+folder: ../data/lsun_room
