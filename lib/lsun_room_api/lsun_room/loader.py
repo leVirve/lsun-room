@@ -40,8 +40,8 @@ class LsunRoomDataset(BaseDataset):
         return gen_edge_map(e, self.target_size, self.edge_width, self.edge_sigma)
 
     def load_corner_map(self, index):
-        e = self.items[index]
-        return gen_corner_map(e, self.target_size)
+        e = self.meta[index]
+        return gen_corner_map(e, self.target_size).astype('float32')
 
     def __len__(self):
         return len(self.meta)

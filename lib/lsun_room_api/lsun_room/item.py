@@ -4,8 +4,7 @@ import numpy as np
 import scipy.io as sio
 
 import cv2
-from datasets.lsun_room.label import mapping_func
-from datasets.lsun_room.utils import load_image, load_mat, save_image
+from lsun_room.label import mapping_func
 
 
 def load_mat(path):
