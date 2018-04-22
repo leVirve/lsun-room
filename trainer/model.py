@@ -1,8 +1,26 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.nn.init as weight_init
 import torchvision.models as models
 from onegan.external import fcn
+
+
+def transposed_conv(in_channels, out_channels, stride=2):
+    ''' transposed conv with same padding '''
+    kernel_size, padding = {
+        2: (4, 1),
+        4: (8, 2),
+        16: (32, 8),
+    }[stride]
+    layer = nn.ConvTranspose2d(
+        in_channels,
+        out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        bias=False)
+    return layer
 
 
 class LaFCN(nn.Module):
@@ -129,89 +147,81 @@ class VggFCN(nn.Module):
             b.bias.data = a.bias.data.view(b.bias.size())
 
 
-class ResFCN(nn.Module):
+class PlanarSegHead(nn.Module):
+    ''' revised and refactored from 麥扣老師.py
+    '''
+
+    def __init__(self, bottleneck_channels):
+        super().__init__()
+        self.drop1 = nn.Dropout(p=0.5)
+        self.drop2 = nn.Dropout(p=0.5)
+        self.bn = nn.BatchNorm2d(2048)
+        self.fc_conv = nn.Conv2d(2048, 2048, kernel_size=1, stride=1, bias=False)
+
+        self.clf1 = nn.Conv2d(2048, bottleneck_channels, kernel_size=1, stride=1, bias=False)
+        self.clf2 = nn.Conv2d(2048, bottleneck_channels, kernel_size=1, stride=1, bias=False)
+        self.clf3 = nn.Conv2d(1024, bottleneck_channels, kernel_size=1, stride=1, bias=False)
+
+        self.dec1 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=2)
+        self.dec2 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=2)
+        self.dec3 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=16)
+
+        self.fc_stage2 = nn.Conv2d(bottleneck_channels, 5, kernel_size=1, stride=1, bias=False)
+
+        import math
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def forward(self, *feats):
+        e7, e6, e5 = feats
+
+        x = self.drop1(e7)
+        x = self.fc_conv(x)
+        x = self.bn(x)
+        x = F.relu(x)
+        x = self.drop2(x)
+
+        c = self.clf1(x)           # 5 x 5 x 5
+        d6 = self.dec1(c)          # 5 x 10 x 10
+
+        d6_b = self.clf2(e6)       # 5 x 10 x 10
+        d5 = self.dec2(d6_b + d6)  # 5 x 20 x 20
+
+        d5_b = self.clf3(e5)       # 5 x 20 x 20
+        d0 = self.dec3(d5_b + d5)  # 5 x 320 x 320
+
+        d = self.fc_stage2(d0)
+        return d
+
+
+class ResPlanarSeg(nn.Module):
 
     def __init__(self, num_classes=5, num_room_types=11, pretrained=True, base='resnet101'):
-        self.inplanes = 64
         super().__init__()
-
         BaseNet = getattr(models, base)
-        resnet = BaseNet(pretrained=pretrained)
-
-        self.conv = nn.Sequential(
-            resnet.conv1,
-            resnet.bn1,
-            resnet.relu,
-        )
-        self.maxpool = resnet.maxpool
-        self.layer1 = resnet.layer1
-        self.layer2 = resnet.layer2
-        self.layer3 = resnet.layer3
-        self.layer4 = resnet.layer4
-
-        # room type classification
-        self.avgpool = nn.AvgPool2d(10)
-        self.fc = nn.Linear(512 * models.resnet.Bottleneck.expansion, num_room_types)
-
-        # planar segmentation
-        self.fc_conv = nn.Conv2d(512 * models.resnet.Bottleneck.expansion, num_classes, kernel_size=1, bias=False)
-        self.dec1 = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=4, stride=2, padding=1, bias=False)
-        self.dec2 = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=4, stride=2, padding=1, bias=False)
-        self.dec3 = nn.ConvTranspose2d(num_classes, num_classes, kernel_size=4, stride=2, padding=1, bias=False)
-
-        def weights_init_kaiming(m):
-            classname = m.__class__.__name__
-            if classname.find('Conv') != -1:
-                weight_init.kaiming_normal(m.weight.data, a=0, mode='fan_in')
-            elif classname.find('Linear') != -1:
-                weight_init.kaiming_normal(m.weight.data, a=0, mode='fan_in')
-            elif classname.find('BatchNorm2d') != -1:
-                weight_init.uniform(m.weight.data, 1.0, 0.02)
-                weight_init.constant(m.bias.data, 0.0)
-
-        for m in self.modules():
-            if isinstance(m, nn.ConvTranspose2d):
-                m.weight.data = weight_init.kaiming_normal(m.weight.data)
-        self.apply(weights_init_kaiming)
-
-    def _initialize_module(self, pretrained):
-        if not pretrained:
-            return
-
-        def init_module_weight(target, source):
-            for target_block, source_block in zip(target, source):
-                for t, s in zip(target_block.children(), source_block.children()):
-                    if hasattr(s, 'weight'):
-                        t.weight.data = s.weight.data
-
-        resnet = models.resnet101(pretrained=True)
-        init_module_weight(self.layer1, resnet.layer1)
-        init_module_weight(self.layer2, resnet.layer2)
-        init_module_weight(self.layer3, resnet.layer3)
-        init_module_weight(self.layer4, resnet.layer4)
+        self.resnet = BaseNet(pretrained=pretrained)
+        self.planar_seg = PlanarSegHead(bottleneck_channels=37)
 
     def forward(self, x):
-        e1 = self.conv(x)      # /2, /2, 64 --*
-        e2 = self.maxpool(e1)  # /4, /4, 64 -*
+        '''
+        x: 3 x 320 x 320
+        '''
+        x = self.resnet.conv1(x)       # 64 x 160 x 160
+        x = self.resnet.bn1(x)
+        e1 = self.resnet.relu(x)
+        e2 = self.resnet.maxpool(e1)   # 64 x 80 x 80
+        e3 = self.resnet.layer1(e2)    # 256 x 80 x 80
+        e4 = self.resnet.layer2(e3)    # 512 x 40 x 40
+        e5 = self.resnet.layer3(e4)    # 1024  x 20 x 20
+        e6 = self.resnet.layer4(e5)    # 2048 x 10 x 10
+        e7 = self.resnet.maxpool(e6)   # 2048 x 5 x 5
 
-        h = self.layer1(e2)    # /4, /4, 64
-        e3 = self.layer2(h)    # /8, /8, 128
-        h = self.layer3(e3)    # /16, /16, 256
-        h = self.layer4(h)     # /32, /32, 512
-
-        c = self.fc_conv(h)    # /32, /32, 2048
-        d1 = self.dec1(c)      # /16, /16, num_classes -*
-        d2 = self.dec2(d1)     # /8, /8, num_classes --*
-        d2 = nn.functional.upsample_bilinear(d2, scale_factor=2)
-        d3 = self.dec3(d2)     # /2, /2, num_classes
-        d3 = nn.functional.upsample_bilinear(d3, scale_factor=2)
-
-        # room type
-        t = self.avgpool(h)
-        t = t.view(t.size(0), -1)
-        t = self.fc(t)
-
-        return d3, t
+        return self.planar_seg(e7, e6, e5), None
 
 
 class DilatedResFCN(nn.Module):

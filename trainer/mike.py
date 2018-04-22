@@ -49,8 +49,8 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.avgpool = nn.AvgPool2d(7)
-        self.type_fc = nn.Linear(512 * block.expansion, num_rtype)
+        # self.avgpool = nn.AvgPool2d(7)
+        # self.type_fc = nn.Linear(512 * block.expansion, num_rtype)
 
         self.dp1 = nn.Dropout(p=0.5)
         self.fc_conv = nn.Conv2d(2048, 2048, kernel_size=1, stride=1, bias=False)
@@ -128,6 +128,10 @@ class ResNet(nn.Module):
         score_l3 = self.score_l3(x3)
         upscore_l3 = self.upscore_l3(upscore_l4 + score_l3)
         out = upscore_l3[:, :, 27:27 + in_.size()[2], 27:27 + in_.size()[3]].contiguous()
+
+        out_stage2 = self.fc_stage2(out)
+        return out_stage2, None
+
         if self.stage_2:
             out_stage2 = self.fc_stage2(out)
             if self.joint_class:

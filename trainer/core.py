@@ -133,7 +133,7 @@ def evaluation_estimator(model, args):
     score_metric = onegan.metrics.semantic_segmentation.max_bipartite_matching_score
 
     log.info('Build evaluation esimator')
-    checkpoint.apply(args.pretrain_path, model, remove_module=False)
+    model = checkpoint.load(args.pretrain_path, model=model)
     estimator = OneEstimator(model, name=args.name)
 
     return partial(estimator.evaluate, inference_fn=partial(_closure, volatile=True))
@@ -149,26 +149,24 @@ def weights_estimator(model, args):
         return {'score': score}
 
     def searching(data_loader):
-        max_accuracy, best_path = 0, None
+        path_to_cost = {}
+        inference_fn = partial(_closure, volatile=True)
 
-        for state_dict, path in searcher.get_weight():
-            model.load_state_dict(state_dict)
-            estimator.model = model
-            history = estimator.evaluate(data_loader, inference_fn=partial(_closure, volatile=True))
-            monitor_value = history['score_val']
-            if monitor_value > max_accuracy:
-                max_accuracy = monitor_value
-                best_path = path
-            print('->', path, monitor_value)
+        for m, path in ckpt.get_weights(args.pretrain_path, model=model):
+            estimator.model = m
+            estimator.dummy_evaluate(data_loader, inference_fn=inference_fn)
+            path_to_cost[path] = estimator.history.get('score_val')
+        best_path = max(path_to_cost, key=path_to_cost.get)
 
-        print(f'Best weight: {best_path} (error: {1 - max_accuracy:.04f}%)')
+        accuracy = path_to_cost[best_path]
+        print(f'Best weight: {best_path} (error: {1 - accuracy:.04f}%)')
 
     log = logging.getLogger(f'room.{args.name}')
 
-    searcher = onegan.extension.WeightSearcher(args.pretrain_path)
     score_metric = onegan.metrics.semantic_segmentation.max_bipartite_matching_score
 
-    log.info('Build weights esimator')
+    log.info('Build weight-searching esimator')
     estimator = OneEstimator(model, name=args.name)
+    ckpt = onegan.extension.Checkpoint(name=args.name, save_epochs=5)
 
     return searching

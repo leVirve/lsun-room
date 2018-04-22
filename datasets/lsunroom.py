@@ -39,7 +39,7 @@ class LsunRoomDataset(_BaseDataset):
         counter = [0 for i in range(11)]
         for m in meta:
             counter[m['type']] += 1
-        self._log.info('meta-fold1 -->' + '|'.join([str(c).rjust(4) for c in counter]))
+        self.logger.info('meta-fold1 -->' + '|'.join([str(c).rjust(4) for c in counter]))
 
         if phase == 'val' or self.args.datafold == 1:
             return meta
@@ -54,7 +54,7 @@ class LsunRoomDataset(_BaseDataset):
                 {'image_path': img, 'layout_path': lbl, 'name': os.path.basename(lbl), 'type': i}
                 for img, lbl in zip(imgs, lbls)]
             counter[i] = len(imgs)
-        self._log.info('meta-fold2 -->' + '|'.join([str(c).rjust(4) for c in counter]))
+        self.logger.info('meta-fold2 -->' + '|'.join([str(c).rjust(4) for c in counter]))
 
         if self.args.datafold == 2:
             return meta + aug_meta
@@ -69,7 +69,7 @@ class LsunRoomDataset(_BaseDataset):
                 {'image_path': img, 'layout_path': lbl, 'name': os.path.basename(lbl), 'type': i}
                 for img, lbl in zip(imgs, lbls)]
             counter[i] = len(imgs)
-        self._log.info('meta-fold3 -->' + '|'.join([str(c).rjust(4) for c in counter]))
+        self.logger.info('meta-fold3 -->' + '|'.join([str(c).rjust(4) for c in counter]))
 
         return meta + aug_meta + augaug_meta
 

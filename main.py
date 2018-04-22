@@ -5,8 +5,8 @@ import torch
 import onegan
 
 from trainer import core
-from trainer.賣扣老師 import build_resnet101_FCN
-from trainer.model import ResFCN, VggFCN, LaFCN, DilatedResFCN
+from trainer.mike import build_resnet101_FCN
+from trainer.model import ResPlanarSeg, VggFCN, LaFCN, DilatedResFCN
 
 
 def create_dataset(args):
@@ -19,8 +19,10 @@ def create_dataset(args):
         'hedau': 'HedauDataset',
     }[args.dataset])
     args.num_class = Dataset.num_classes
+    kwargs = {'collate_fn': onegan.io.universal_collate_fn}
 
-    return Dataset('train', args=args).to_loader(args=args), Dataset('val', args=args).to_loader(args=args)
+    return (Dataset(phase, args=args).to_loader(**kwargs)
+            for phase in ['train', 'val'])
 
 
 def create_model(args):
@@ -29,7 +31,7 @@ def create_model(args):
             num_class=args.num_class, input_size=(args.image_size, args.image_size), pretrained=True, base='vgg16_bn'),
         'lavgg': lambda: LaFCN(
             num_classes=args.num_class, input_size=None, pretrained=True, base='vgg16_bn'),
-        'resnet': lambda: ResFCN(
+        'resnet': lambda: ResPlanarSeg(
             num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
         'drn': lambda: DilatedResFCN(
             num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
@@ -63,7 +65,7 @@ def hyperparams_search(args):
 
 def main(args):
     log = logging.getLogger('room')
-    log.info(''.join([f'\n-- {k}: {v}' for k, v in vars(args).items()]))
+    log.info(''.join([f'\n-- {k}: {v}' for k, v in args.items()]))
 
     train_loader, val_loader = create_dataset(args)
     model = create_model(args)
