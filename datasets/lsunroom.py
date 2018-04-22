@@ -44,7 +44,7 @@ class LsunRoomDataset(_BaseDataset):
         if phase == 'val' or self.args.datafold == 1:
             return meta
 
-        ''' metadata fold2: 1-step degeneration laugmentated dataset '''
+        ''' metadata fold2: 1-step degeneration augmentated dataset '''
         counter = [0 for i in range(11)]
         aug_meta = []
         for i in range(11):
@@ -59,7 +59,7 @@ class LsunRoomDataset(_BaseDataset):
         if self.args.datafold == 2:
             return meta + aug_meta
 
-        ''' metadata fold3: 2-step degeneration laugmentated dataset '''
+        ''' metadata fold3: 2-step degeneration augmentated dataset '''
         counter = [0 for i in range(11)]
         augaug_meta = []
         for i in range(11):
