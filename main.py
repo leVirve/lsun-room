@@ -5,8 +5,7 @@ import torch
 import onegan
 
 from trainer import core
-from trainer.mike import build_resnet101_FCN
-from trainer.model import ResPlanarSeg, VggFCN, LaFCN, DilatedResFCN
+from trainer.model import ResPlanarSeg
 
 
 def create_dataset(args):
@@ -27,16 +26,7 @@ def create_dataset(args):
 
 def create_model(args):
     return {
-        'vgg': lambda: VggFCN(
-            num_class=args.num_class, input_size=(args.image_size, args.image_size), pretrained=True, base='vgg16_bn'),
-        'lavgg': lambda: LaFCN(
-            num_classes=args.num_class, input_size=None, pretrained=True, base='vgg16_bn'),
-        'resnet': lambda: ResPlanarSeg(
-            num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
-        'drn': lambda: DilatedResFCN(
-            num_classes=args.num_class, num_room_types=11, pretrained=True, base='resnet101'),
-        'mike': lambda: build_resnet101_FCN(
-            pretrained=True, nb_classes=37, stage_2=True, joint_class=not args.disjoint_class)
+        'resnet': lambda: ResPlanarSeg(num_classes=args.num_class, pretrained=True, base='resnet101')
     }[args.arch]()
 
 
