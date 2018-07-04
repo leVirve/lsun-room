@@ -1,8 +1,20 @@
-# General Indoor Layout Estimation from a Single Image
-
-## LSUN Room Layout Estimation
+# Indoor Layout Estimation from a Single Image
 
 ![one_lsun_result_banner](./doc/banner.png)
+
+
+## Citation
+```
+@inproceedings{lin2018layoutestimation,
+    Author = {Hung Jin Lin and Sheng-Wei Huang and Shang-Hong Lai and Chen-Kuo Chiang},
+    Title = {Indoor Scene Layout Estimation from a Single Image},
+    Booktitle = {2018 24th International Conference on Pattern Recognition (ICPR)},
+    Year = {2018}
+}
+```
+
+**The code is under evaluation and update TBD. Deprecated information below.**
+
 
 ## Prerequisite
 
