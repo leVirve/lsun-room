@@ -1,8 +1,11 @@
 # Indoor Layout Estimation from a Single Image
 
 ![one_lsun_result_banner](./doc/banner.png)
+![one_lsun_result_more](./doc/more.jpg)
 
 ## Citation
+
+[Paper](./doc/icpr2018_lin_layoutestimation.pdf)
 
 ```bibtex
 @inproceedings{lin2018layoutestimation,
@@ -70,11 +73,8 @@ Thanks [@shuuchen](https://github.com/shuuchen) for an all-in-one project, you m
 
 - Toolkit
 
-  - Put `LSUN Room Layout Dataset` toolkit in folder `../lsun_toolkit`
-    - Integrated scripts (TBD)
+  - Official `LSUN Room Layout Dataset` toolkit in folder [`./lib/lsun_toolkit`](lib/lsun_toolkit)
 
-- Evaluate with official Matlab toolkit
-
-  ```bash
-  matlab -nojvm -nodisplay -nosplash -r "demo('$EXPERIMENT_OUTPUT_FODLER'); exit;"
-  ```
+    ```bash
+    matlab -nojvm -nodisplay -nosplash -r "demo('$EXPERIMENT_OUTPUT_FODLER'); exit;"
+    ```
