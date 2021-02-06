@@ -48,8 +48,6 @@ def main(args):
         model = core.LayoutSeg(args.num_class, args.lr, args)
         trainer = pl.Trainer(
             gpus=1,
-            limit_train_batches=.1,
-            limit_val_batches=.1,
             max_epochs=args.epoch,
             weights_save_path=f'ckpts/{args.name}',
             logger=pl.loggers.TensorBoardLogger('ckpts/tb_logs', name=args.name)

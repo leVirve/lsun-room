@@ -9,7 +9,7 @@ International Conference on Pattern Recognition (ICPR), 2018.
 ## Information
 
 Confernece paper in [PDF](./doc/icpr2018_lin_layoutestimation.pdf).
-Cannot provide original checkpoint in paper due to the agreement, so here's a re-trained checkpoint at [Google Drive](https://drive.google.com/file/d/1ZEbafjz4crBlRpw1Kb4kijSbNMEpXopr/view?usp=sharing) for fast evaluation.
+Cannot provide original checkpoint in paper due to the agreement, so here's a re-trained checkpoint at [Google Drive](https://drive.google.com/file/d/1aUJoXM9SQMe0LC38pA8v8r43pPOAaQ-a/view?usp=sharing) for fast evaluation.
 
 Updated Jan 2021.
 
