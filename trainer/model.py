@@ -21,8 +21,6 @@ def transposed_conv(in_channels, out_channels, stride=2):
 
 
 class PlanarSegHead(nn.Module):
-    ''' revised and refactored from 麥扣老師.py
-    '''
 
     def __init__(self, bottleneck_channels, num_classes):
         super().__init__()
@@ -94,4 +92,4 @@ class ResPlanarSeg(nn.Module):
         e6 = self.resnet.layer4(e5)    # 2048 x 10 x 10
         e7 = self.resnet.maxpool(e6)   # 2048 x 5 x 5
 
-        return self.planar_seg(e7, e6, e5), None
+        return self.planar_seg(e7, e6, e5)

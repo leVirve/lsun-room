@@ -5,15 +5,16 @@ import torch
 import torchvision.transforms as T
 from PIL import Image
 
-from trainer.賣扣老師 import build_resnet101_FCN
+from trainer import core
 
 torch.backends.cudnn.benchmark = True
 
 
 class Predictor:
 
-    def __init__(self, input_size, weight=None):
-        self.model = self.build_model(weight)
+    def __init__(self, input_size, weight_path):
+        self.model = core.LayoutSeg.load_from_checkpoint(weight_path)
+        self.model.freeze()
         self.colorizer = onegan.extension.Colorizer(
             colors=[
                 [249, 69, 93], [255, 229, 170], [144, 206, 181],
@@ -24,22 +25,14 @@ class Predictor:
             T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5])
         ])
 
-    def build_model(self, weight_path, joint_class=False):
-        model = build_resnet101_FCN(pretrained=False, nb_classes=37, stage_2=True, joint_class=joint_class)
-        weight = onegan.utils.export_checkpoint_weight(weight_path)
-        model.load_state_dict(weight)
-        model.eval()
-        return model.cuda()
-
     @onegan.utils.timeit
     def process(self, raw):
 
         def _batched_process(batched_img):
-            score, _ = self.model(onegan.utils.to_var(batched_img))
-            _, output = torch.max(score, 1)
+            _, outputs = self.model(batched_img)
 
             image = (batched_img / 2 + .5)
-            layout = self.colorizer.apply(output.data.cpu())
+            layout = self.colorizer.apply(outputs.data.cpu())
             return image * .6 + layout * .4
 
         img = Image.fromarray(raw)
@@ -55,8 +48,7 @@ class Predictor:
 @click.option('--weight', type=click.Path(exists=True))
 @click.option('--input_size', default=(320, 320), type=(int, int))
 def main(device, video, weight, input_size):
-
-    demo = Predictor(input_size, weight=weight)
+    demo = Predictor(input_size, weight_path=weight)
 
     reader = video if video else device
     cap = cv2.VideoCapture(reader)

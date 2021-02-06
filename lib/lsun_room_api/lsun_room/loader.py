@@ -5,7 +5,7 @@ import scipy.io
 from onegan.io.loader import load_image, BaseDataset
 from onegan.io.transform import SegmentationPair
 
-from lsun_room.edge import gen_edge_map, gen_corner_map
+from .edge import gen_edge_map, gen_corner_map
 
 
 def get_meta(dataset_root, phase):

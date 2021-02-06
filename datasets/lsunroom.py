@@ -8,9 +8,9 @@ import torch
 import torchvision.transforms as T
 from PIL import Image
 
-from lsun_room.label import Layout
-from lsun_room.loader import LsunRoomDataset as _BaseDataset
-from lsun_room.loader import get_meta
+from lib.lsun_room_api.lsun_room.label import Layout
+from lib.lsun_room_api.lsun_room.loader import LsunRoomDataset as _BaseDataset
+from lib.lsun_room_api.lsun_room.loader import get_meta
 
 
 class LsunRoomDataset(_BaseDataset):
@@ -31,7 +31,7 @@ class LsunRoomDataset(_BaseDataset):
     def collect_meta(self, root, phase):
         ''' metadata fold1: original dataset '''
         meta = [
-            {'image_path': root / self.image_folder / f'{e["name"]}.jpg',
+            {'image_path': root / self.image_folder / f'{e["name"]}.png',
              'layout_path': root / self.layout_folder / f'{e["name"]}.png',
              'name': e['name'] + '.png', 'type': e['type']}
             for e in get_meta(dataset_root=root, phase=phase)
