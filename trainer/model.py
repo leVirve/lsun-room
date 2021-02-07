@@ -22,16 +22,16 @@ def transposed_conv(in_channels, out_channels, stride=2):
 
 class PlanarSegHead(nn.Module):
 
-    def __init__(self, bottleneck_channels, num_classes):
+    def __init__(self, bottleneck_channels, in_features=2048, num_classes=5):
         super().__init__()
         self.drop1 = nn.Dropout(p=0.5)
         self.drop2 = nn.Dropout(p=0.5)
-        self.bn = nn.BatchNorm2d(2048)
-        self.fc_conv = nn.Conv2d(2048, 2048, kernel_size=1, stride=1, bias=False)
+        self.bn = nn.BatchNorm2d(in_features)
+        self.fc_conv = nn.Conv2d(in_features, in_features, kernel_size=1, stride=1, bias=False)
 
-        self.clf1 = nn.Conv2d(2048, bottleneck_channels, kernel_size=1, stride=1, bias=False)
-        self.clf2 = nn.Conv2d(2048, bottleneck_channels, kernel_size=1, stride=1, bias=False)
-        self.clf3 = nn.Conv2d(1024, bottleneck_channels, kernel_size=1, stride=1, bias=False)
+        self.clf1 = nn.Conv2d(in_features, bottleneck_channels, kernel_size=1, stride=1, bias=False)
+        self.clf2 = nn.Conv2d(in_features, bottleneck_channels, kernel_size=1, stride=1, bias=False)
+        self.clf3 = nn.Conv2d(in_features // 2, bottleneck_channels, kernel_size=1, stride=1, bias=False)
 
         self.dec1 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=2)
         self.dec2 = transposed_conv(bottleneck_channels, bottleneck_channels, stride=2)
@@ -72,11 +72,11 @@ class PlanarSegHead(nn.Module):
 
 class ResPlanarSeg(nn.Module):
 
-    def __init__(self, num_classes=5, pretrained=True, base='resnet101'):
+    def __init__(self, pretrained=True, backbone='resnet101'):
         super().__init__()
-        BaseNet = getattr(models, base)
-        self.resnet = BaseNet(pretrained=pretrained)
-        self.planar_seg = PlanarSegHead(bottleneck_channels=37, num_classes=num_classes)
+        BackBone = getattr(models, backbone)
+        self.resnet = BackBone(pretrained=pretrained)
+        self.planar_seg = PlanarSegHead(bottleneck_channels=37, in_features=self.resnet.fc.in_features)
 
     def forward(self, x):
         '''

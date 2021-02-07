@@ -17,7 +17,7 @@ def create_dataset(args):
         'lsunroom': 'LsunRoomDataset',
         'hedau': 'HedauDataset',
     }[args.dataset])
-    args.num_class = Dataset.num_classes
+    # args.num_class = Dataset.num_classes
     kwargs = {'collate_fn': onegan.io.universal_collate_fn}
 
     return (Dataset(phase, args=args).to_loader(**kwargs)
@@ -45,7 +45,9 @@ def main(args):
 
     train_loader, val_loader = create_dataset(args)
     if args.phase == 'train':
-        model = core.LayoutSeg(args.num_class, args.lr, args)
+        model = core.LayoutSeg(
+            lr=args.lr, backbone=args.backbone,
+            l1_factor=args.l1_factor, l2_factor=args.l2_factor, edge_factor=args.edge_factor)
         trainer = pl.Trainer(
             gpus=1,
             max_epochs=args.epoch,
@@ -77,6 +79,7 @@ if __name__ == '__main__':
 
     # network
     parser.add_argument('--arch', default='resnet')
+    parser.add_argument('--backbone', default='resnet101')
     parser.add_argument('--optim', default='adam')
     parser.add_argument('--disjoint_class', action='store_true')
     parser.add_argument('--pretrain_path', default='')
