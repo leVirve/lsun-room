@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "940c3081fbe9b799121b1db7d1ee63ad",
+    "revision": "2a3cc8678dc258e0946c744a4df49bea",
     "url": "/lsun-room/index.html"
   },
   {
@@ -12,8 +12,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/lsun-room/static/js/2.66e49f1f.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "4690632a93d01798a813",
-    "url": "/lsun-room/static/js/main.6bb4aa2f.chunk.js"
+    "revision": "b45f83e5018794db2edc",
+    "url": "/lsun-room/static/js/main.516d1592.chunk.js"
   },
   {
     "revision": "c9cfff49b8cf14f85d24",
