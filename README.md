@@ -8,76 +8,84 @@ International Conference on Pattern Recognition (ICPR), 2018.
 
 ## Information
 
-Confernece paper in [PDF](./doc/icpr2018_lin_layoutestimation.pdf).
-Cannot provide original checkpoint in paper due to the agreement, so here's a re-trained checkpoint at [Google Drive](https://drive.google.com/file/d/1aUJoXM9SQMe0LC38pA8v8r43pPOAaQ-a/view?usp=sharing) for fast evaluation.
+Conference paper in [PDF](./doc/icpr2018_lin_layoutestimation.pdf).
 
-Updated Jan 2021.
+Pre-trained weight at [Google Drive](https://drive.google.com/file/d/1aUJoXM9SQMe0LC38pA8v8r43pPOAaQ-a/view?usp=sharing).
+
+> Cannot provide original checkpoint in paper due to the agreement, so this is a re-trained checkpoint for fast evaluation.
+
+Updated Feb 2021.
 
 ## Prerequisite
 
 - Python 3.6+
 - PyTorch 1.0+
-- [OneGAN](https://github.com/leVirve/OneGAN) == `0.3.2`, clone and checkout to that tag.
-
-  ```bash
-  git clone https://github.com/leVirve/OneGA
-  git checkout 0.3.2
-  ```
-
+- [OneGAN](https://github.com/leVirve/OneGAN) newest is okay.
 - `pip install -e requirements.txt`
 
 ## Dataset
 
-- Download dataset from http://lsun.cs.princeton.edu/2015.html#layout.
-  - Unfortunately, the website hosted LSUN Layout challenge is down.
-- Find them from the [web archive](https://web.archive.org/web/20190118150204/http://lsun.cs.princeton.edu/2016/)
-  - [layout.zip](https://web.archive.org/web/20170221111502/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/layout.zip)
-  - [training.mat](https://web.archive.org/web/20180923231343/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/training.mat), [validation.mat](https://web.archive.org/web/20180923231343/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/validation.mat) and [testing.mat](https://web.archive.org/web/20180923231343/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/testing.mat).
-- However, the `image.zip` is too large and still unavailable to download from the web archive.
-  - Fortunately, you can find them in https://github.com/liamw96/pytorch.room.layout#data. [@liamw96](https://github.com/liamw96) provides dataset image in the `lsun.zip` on Google drive!
+- [LSUN Layout Challenge](http://lsun.cs.princeton.edu/2015.html#layout)
+  - Unfortunately, the website of *LSUN Layout Challenge* is down.
+- However, we can find them from below links.
+  - **Full images and labels dataset**: [LSUN2016_surface_relabel.zip](https://www.dropbox.com/s/85n95ftlp2rn0fq/LSUN2016_surface_relabel.zip?dl=0) from [@yuzhuoren](https://github.com/yuzhuoren/IndoorLayout).
+    >*Recommend to use this, the original ground truth of LSUN Room challenge are not perfect.*
+  - **Data splits** for [training.mat](https://web.archive.org/web/20180923231343/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/training.mat), [validation.mat](https://web.archive.org/web/20180923231343/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/validation.mat) and [testing.mat](https://web.archive.org/web/20180923231343/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/testing.mat) from the [web archive](https://web.archive.org/web/20190118150204/http://lsun.cs.princeton.edu/2016/).
+<!-- - However, the `image.zip` is too large and still unavailable to download from the web archive. -->
+  <!-- - layout segments (not perfect) [layout.zip](https://web.archive.org/web/20170221111502/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/layout.zip) -->
+  <!-- - Fortunately, you can find them in https://github.com/liamw96/pytorch.room.layout#data. [@liamw96](https://github.com/liamw96) provides dataset image in the `lsun.zip` on Google drive! -->
 
 ## Usage
 
-Thanks [@shuuchen](https://github.com/shuuchen) for an all-in-one project, you may also refer to https://github.com/shuuchen/lsun-room-dsc!
-
-- Dataset
-
-  - Put `LSUN Room Layout Dataset` into folder `./data/lsun_room`.
-    - `images/`: RGB color image `*.jpg` of indoor room scene
-    - `layout_seg/`: layout ground truth `*.mat` of indoor room scene
-  - Prepare layout images for trianing/validation.
-
-    - `layout_seg_images/`: generated layout ground truth `*.png` of indoor room scene
-
-    ```bash
-    python -m script.re_label
-    ```
+Thanks [@shuuchen](https://github.com/shuuchen) for an all-in-one project, you may also refer to <https://github.com/shuuchen/lsun-room-dsc>!
 
 - Training
 
-  - The trained model will be saved to folder `./ckpts`
+  - Dataset **LSUN Room Layout Dataset** into folder `./data/lsun_room`.
+    - `images/`: RGB color image `*.jpg` of indoor room scene
+    - `layout_seg/`: layout ground truth `*.mat` of indoor room scene
 
-  Example
+  - The trained model will be saved to folder `./ckpts`
 
   ```bash
   python main.py --phase train --arch resnet --edge_factor 0.2 --l2_factor 0.2 --name baseline
   ```
 
-- Testing
+- Validation
+
+  - Validate on LSUN Room/Hedau datasets.
 
   ```bash
-  python demo.py --weight {checkpoint_path} --video {test_video}
+  python main.py --phase eval --dataset hedau --folder ./data/hedau --pretrain_path {checkpoint_path}
+  ```
+
+- Testing
+
+  - On your image
+
+  ```bash
+  python demo.py image --weight {checkpoint_path} --path {file_path}
+  ```
+
+  - On video and webcam
+
+  ```bash
+  # video
+  python demo.py video --weight {checkpoint_path} --path {test_video}
+
+  # webcam
+  python demo.py video --weight {checkpoint_path} --device 0
   ```
 
 - Toolkit
 
   - Official `LSUN Room Layout Dataset` toolkit in folder [`./lib/lsun_toolkit`](lib/lsun_toolkit)
 
-    ```bash
-    # this is my modified scrpt for usage demonstration,
-    # you may need to modify the official Matlab code to evaluate your results.
-    matlab -nojvm -nodisplay -nosplash -r "demo('$EXPERIMENT_OUTPUT_FODLER'); exit;"
-    ```
+  ```bash
+  # this is my modified script for usage demonstration,
+  # you may need to modify the official Matlab code to evaluate your results.
+  matlab -nojvm -nodisplay -nosplash -r "demo('$EXPERIMENT_OUTPUT_FOLDER'); exit;"
+  ```
 
 ## Citation
 

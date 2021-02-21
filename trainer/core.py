@@ -62,13 +62,15 @@ class LayoutSeg(pl.LightningModule):
         self.log_dict(loss_terms, logger=True)
         return loss
 
+    @torch.no_grad()
     def test_step(self, batch, batch_idx):
         inputs = batch['image']
         targets = batch['label']
         _, outputs = self(inputs)
 
         metric_terms = self.metric(outputs, targets)
-        logger.info(metric_terms)
+        logger.info(f'batch#{batch_idx}: {metric_terms}')
+        return metric_terms
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -116,6 +118,12 @@ class LayoutSeg(pl.LightningModule):
         accuracies = seg_metric(output, target)
         score = score_metric(output, target)
         return {**accuracies, 'score': score}
+
+    def get_progress_bar_dict(self):
+        # don't show the version number
+        items = super().get_progress_bar_dict()
+        items.pop('v_num', None)
+        return items
 
 
 def label_as_rgb_visual(x):

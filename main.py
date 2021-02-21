@@ -38,15 +38,18 @@ def main(args):
             gpus=1,
             max_epochs=args.epoch,
             resume_from_checkpoint=args.pretrain_path,
-            default_root_dir=f'ckpts/{args.name}',
+            checkpoint_callback=pl.ModelCheckpoint('ckpts', filename='{step}-{val_loss:.2f}', save_top_k=5),
             logger=pl.loggers.TensorBoardLogger('ckpts/logs', name=args.name),
             accumulate_grad_batches=2,
         )
         trainer.fit(model, train_loader, val_loader)
     elif args.phase == 'eval':
         model = core.LayoutSeg.load_from_checkpoint(args.pretrain_path, backbone=args.backbone)
-        trainer = pl.Trainer()
-        trainer.test(model, val_loader)
+        acc_score = 0
+        for i, batch in enumerate(val_loader, start=1):
+            metrics = model.test_step(batch, i)
+            acc_score += metrics['score'] * args.batch_size
+        logger.info(f'Mean on batched scores: {acc_score / len(val_loader.dataset)}')
 
 
 if __name__ == '__main__':
@@ -64,22 +67,16 @@ if __name__ == '__main__':
     parser.add_argument('--image_size', default=320, type=int)
     parser.add_argument('--use_layout_degradation', action='store_true')
 
-    # outout
-    parser.add_argument('--tri_visual', action='store_true')
-
     # network
     parser.add_argument('--arch', default='resnet')
     parser.add_argument('--backbone', default='resnet101')
     parser.add_argument('--optim', default='adam')
-    parser.add_argument('--disjoint_class', action='store_true')
     parser.add_argument('--pretrain_path', default='')
 
     # hyper-parameters
     parser.add_argument('--l1_factor', type=float, default=0.0)
     parser.add_argument('--l2_factor', type=float, default=0.0)
     parser.add_argument('--edge_factor', type=float, default=0.0)
-    parser.add_argument('--type_factor', type=float, default=0.0)
-    parser.add_argument('--focal_gamma', type=float, default=0)
     args = parser.parse_args()
 
     main(args)
