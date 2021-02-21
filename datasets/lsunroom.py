@@ -1,134 +1,215 @@
-import glob
-import os
+import enum
 import pathlib
 import random
+from collections import defaultdict, namedtuple
+from typing import Sequence, Union
 
+import cv2
 import numpy as np
 import torch
-import torchvision.transforms as T
 from PIL import Image
+from scipy.io import loadmat
+from torchvision import transforms as T
+from torchvision.transforms import functional as F
 
-from lib.lsun_room_api.lsun_room.label import Layout
-from lib.lsun_room_api.lsun_room.loader import LsunRoomDataset as _BaseDataset
-from lib.lsun_room_api.lsun_room.loader import get_meta
+TensorCHW = Union[torch.Tensor, np.ndarray]
+Scene = namedtuple('Scene', ['filename', 'scene_type', 'layout_type', 'keypoints', 'shape'])
 
 
-class LsunRoomDataset(_BaseDataset):
+class LsunRoomDataset(torch.utils.data.Dataset):
 
-    def __init__(self, phase, args, **kwarges):
+    def __init__(self, phase, folder, image_size):
+        assert phase in ('training', 'validation', 'testing')
+        self.root = pathlib.Path(folder)
         self.phase = phase
-        self.args = args
-        self.root = pathlib.Path(args.folder)
-        self.target_size = (args.image_size, args.image_size)
-        self.meta = self.collect_meta(self.root, phase=phase)
-
+        self.metadata = load_lsun_mat(self.root / f'{phase}.mat')
+        self.target_size = (image_size, image_size)
         self.color_jitter = T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2)
-        self.image_transform = T.Compose([
-            T.ToTensor(),
-            T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5]),
-        ])
 
-    def collect_meta(self, root, phase):
-        ''' metadata fold1: original dataset '''
-        meta = [
-            {'image_path': root / self.image_folder / f'{e["name"]}.png',
-             'layout_path': root / self.layout_folder / f'{e["name"]}.png',
-             'name': e['name'] + '.png', 'type': e['type']}
-            for e in get_meta(dataset_root=root, phase=phase)
-        ]
-        counter = [0 for i in range(11)]
-        for m in meta:
-            counter[m['type']] += 1
-        self.logger.info('meta-fold1 -->' + '|'.join([str(c).rjust(4) for c in counter]))
-
-        if phase == 'val' or self.args.datafold == 1:
-            return meta
-
-        ''' metadata fold2: 1-step degeneration augmentated dataset '''
-        counter = [0 for i in range(11)]
-        aug_meta = []
-        for i in range(11):
-            imgs = sorted((root / 'aug_image' / f'type{i}').glob('*.jpg'))
-            lbls = sorted((root / 'aug_layout' / f'type{i}').glob('*.png'))
-            aug_meta += [
-                {'image_path': img, 'layout_path': lbl, 'name': os.path.basename(lbl), 'type': i}
-                for img, lbl in zip(imgs, lbls)]
-            counter[i] = len(imgs)
-        self.logger.info('meta-fold2 -->' + '|'.join([str(c).rjust(4) for c in counter]))
-
-        if self.args.datafold == 2:
-            return meta + aug_meta
-
-        ''' metadata fold3: 2-step degeneration augmentated dataset '''
-        counter = [0 for i in range(11)]
-        augaug_meta = []
-        for i in range(11):
-            imgs = sorted(glob.glob(os.path.join(root, 'augaug_image', f'type{i}', '*.jpg')))
-            lbls = sorted(glob.glob(os.path.join(root, 'augaug_layout', f'type{i}', '*.png')))
-            augaug_meta += [
-                {'image_path': img, 'layout_path': lbl, 'name': os.path.basename(lbl), 'type': i}
-                for img, lbl in zip(imgs, lbls)]
-            counter[i] = len(imgs)
-        self.logger.info('meta-fold3 -->' + '|'.join([str(c).rjust(4) for c in counter]))
-
-        return meta + aug_meta + augaug_meta
+    def __len__(self):
+        return len(self.metadata)
 
     def __getitem__(self, index):
-        e = self.meta[index]
+        element = self.metadata[index]
+        image_path = self.root / f'images/{element.filename}.jpg'
+        label_path = self.root / f'layout_seg/{element.filename}.mat'
 
-        image = Image.open(e['image_path']).convert('RGB')
-        layout = Image.open(e['layout_path']).convert('L')
+        image = F.to_tensor(Image.open(image_path).convert('RGB'))
+        label = torch.from_numpy(loadmat(label_path)['layout'])[None]
+        layout_type = int(element.layout_type)
 
-        image = T.functional.resize(image, self.target_size, Image.BICUBIC)
-        layout = T.functional.resize(layout, self.target_size, Image.NEAREST)
-
-        if self.phase == 'train':
+        if self.phase == 'training':
             image = self.color_jitter(image)
-            image, layout = self.random_lr_flip(image, layout)
+            image, label = random_lr_flip(image, label)
+            image, label, layout_type = random_layout_degradation(image, label, layout_type)
 
-        layout = np.array(layout)
-        edge = self.gen_edge_map(layout)
+        image = F.resize(image, self.target_size, Image.BILINEAR)
+        label = F.resize(label, self.target_size, Image.NEAREST)
+        edge_map = generate_edge_map_from(label[0].numpy())
 
         item = {
-            'image': self.image_transform(image),
-            'label': torch.from_numpy(layout - 1).clamp_(0, 4).long(),
-            'edge': torch.from_numpy(edge).clamp_(0, 1).float(),
-            'type': int(e['type']), 'filename': e['name'],
+            'image': F.normalize(image, mean=0.5, std=0.5),
+            'label': (label[0] - 1).clamp_(0, 4).long(),
+            'edge': torch.from_numpy(edge_map).clamp_(0, 1).float(),
+            'type': layout_type,
         }
-
-        if self.args.datafold == 1 and self.args.use_edge and self.args.use_corner:
-            # only for datafold == 1
-            item['edge'] = self.load_edge_map(index)
-            item['corner'] = self.load_corner_map(index)
-
         return item
 
-    def gen_edge_map(self, layout):
-        import cv2
-        lbl = cv2.GaussianBlur(layout.astype('uint8'), (3, 3), 0)
-        edge = cv2.Laplacian(lbl, cv2.CV_64F)
-        activation = cv2.dilate(np.abs(edge), np.ones((5, 5), np.uint8), iterations=1)
-        activation[activation != 0] = 1
-        return cv2.GaussianBlur(activation, (15, 15), 5)
+    def to_loader(self, batch_size, num_workers=0):
+        return torch.utils.data.DataLoader(
+            self, batch_size=batch_size, shuffle=self.phase == 'training',
+            pin_memory=True, num_workers=num_workers
+        )
+
+
+def load_lsun_mat(filepath: pathlib.Path) -> Sequence[Scene]:
+    data = loadmat(filepath)
+    return [
+        Scene(*(m.squeeze() for m in metadata))
+        for metadata in data[filepath.stem].squeeze()
+    ]
+
+
+def generate_edge_map_from(label):
+    lbl = cv2.GaussianBlur(label.astype('uint8'), (3, 3), 0)
+    edge = cv2.Laplacian(lbl, cv2.CV_64F)
+    activation = cv2.dilate(np.abs(edge), np.ones((5, 5), np.uint8), iterations=1)
+    activation[activation != 0] = 1
+    return cv2.GaussianBlur(activation, (15, 15), 5)
+
+
+def random_lr_flip(image: TensorCHW, label: TensorCHW):
+    if 0.5 < torch.rand(1):
+        return image, label
+
+    image = T.functional.hflip(image)
+    label = T.functional.hflip(label)
+
+    label = label.numpy()
+    old_label = label.copy()
+    label[old_label == Layout.left.value] = Layout.right.value
+    label[old_label == Layout.right.value] = Layout.left.value
+    label = torch.from_numpy(label)
+
+    return image, label
+
+
+def remove_ceiling(image: TensorCHW, label: TensorCHW):
+    _, rows, _ = np.where(label == Layout.ceiling.value)
+    if rows.size == 0:
+        return image, label
+    bound = rows.min()
+    image = image[:, bound:, :]
+    label = label[:, bound:, :]
+    return image, label
+
+
+def remove_floor(image: TensorCHW, label: TensorCHW):
+    _, rows, _ = np.where(label == Layout.floor.value)
+    if rows.size == 0:
+        return image, label
+    bound = rows.max()
+    image = image[:, :bound, :]
+    label = label[:, :bound, :]
+    return image, label
+
+
+def remove_right(image: TensorCHW, label: TensorCHW):
+    _, _, cols = np.where(label == Layout.right.value)
+    if cols.size == 0:
+        return image, label
+    bound = cols.min()
+    image = image[:, :, :bound]
+    label = label[:, :, :bound]
+    if np.any(label == Layout.frontal.value):
+        label[label == Layout.frontal.value] = Layout.right.value
+    else:
+        label[label == Layout.left.value] = Layout.frontal.value
+    return image, label
+
+
+def remove_left(image: TensorCHW, label: TensorCHW):
+    _, _, cols = np.where(label == Layout.left.value)
+    if cols.size == 0:
+        return image, label
+    bound = cols.max()
+    image = image[:, :, bound:]
+    label = label[:, :, bound:]
+    if np.any(label == Layout.frontal.value):
+        label[label == Layout.frontal.value] = Layout.left.value
+    else:
+        label[label == Layout.right.value] = Layout.frontal.value
+    return image, label
+
+
+def accept_aspect_ratio(x: TensorCHW):
+    try:
+        h, w = x.shape[1:]
+        ratio = h / w if h > w else w / h
+        return ratio < 16 / 9
+    except (ZeroDivisionError, RuntimeWarning):
+        return False
+
+
+def random_layout_degradation(image, label, layout_type):
+    if 0.5 < torch.rand(1) or layout_type > 7:
+        return image, label, layout_type
+
+    image_, label_, layout_type_ = image.numpy(), label.numpy(), layout_type
+    degradation_paths = room_layout_degradation.random_paths(layout_type)
+
+    for new_layout_type, degrade_fn in degradation_paths:
+        new_image, new_label = degrade_fn(image_, label_)
+        if not accept_aspect_ratio(new_image):
+            return image, label, layout_type
+        image_, label_, layout_type_ = new_image, new_label, new_layout_type
+
+    image, label = torch.from_numpy(image_), torch.from_numpy(label_)
+    layout_type = layout_type_
+
+    return image, label, layout_type
+
+
+class Layout(enum.Enum):
+    frontal = 1
+    left = 2
+    right = 3
+    floor = 4
+    ceiling = 5
+
+
+class RoomLayoutDegradation:
+    DEGRADATION_GRAPH = {
+        0: [(1, remove_ceiling), (2, remove_floor), (5, remove_right), (5, remove_left)],
+        1: [(4, remove_right), (4, remove_left), (7, remove_floor)],
+        2: [(3, remove_right), (3, remove_left), (7, remove_ceiling)],
+        3: [(8, remove_right), (8, remove_left), (10, remove_ceiling)],
+        4: [(9, remove_right), (9, remove_left), (10, remove_floor)],
+        5: [(6, remove_right), (6, remove_left), (3, remove_floor), (4, remove_ceiling)],
+        6: [(8, remove_floor), (9, remove_ceiling)],
+        7: [(10, remove_right), (10, remove_left)],
+    }
+
+    def __init__(self) -> None:
+        self.possible_degradations = defaultdict(list)
+        self.initialize()
+
+    def initialize(self):
+        # all 11 type, #0~#10, but type #8, #9, #10 has no transform.
+        for room_type in range(8):
+            self.find_possible_degradations(
+                room_type, [], results=self.possible_degradations[room_type])
 
     @classmethod
-    def random_lr_flip(cls, image, layout):
+    def find_possible_degradations(cls, node, path, results):
+        results.append([*path])
+        for neighbor, operation in cls.DEGRADATION_GRAPH.get(node, []):
+            path.append((neighbor, operation))
+            cls.find_possible_degradations(neighbor, path, results)
+            path.pop()
 
-        def layout_lr_swap(layout):
-            layout = np.array(layout)
-            old_layout = layout.copy()
-            layout[old_layout == Layout.left.value] = Layout.right.value
-            layout[old_layout == Layout.right.value] = Layout.left.value
-            return layout
+    def random_paths(self, room_type):
+        return random.choice(self.possible_degradations[room_type])
 
-        if random.random() >= 0.5:
-            image = T.functional.hflip(image)
-            layout = layout_lr_swap(T.functional.hflip(layout))
 
-        return image, layout
-
-    @classmethod
-    def random_rotate(cls, image, layout):
-        angle = np.random.uniform(-5, 5)
-        T.functional.rotate(image, angle, resample=False, expand=False, center=None)
-        T.functional.rotate(layout, angle, resample=False, expand=False, center=None)
+room_layout_degradation = RoomLayoutDegradation()

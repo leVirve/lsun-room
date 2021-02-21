@@ -13,7 +13,7 @@ torch.backends.cudnn.benchmark = True
 class Predictor:
 
     def __init__(self, input_size, weight_path):
-        self.model = core.LayoutSeg.load_from_checkpoint(weight_path)
+        self.model = core.LayoutSeg.load_from_checkpoint(weight_path, backbone='resnet34')
         self.model.freeze()
         self.colorizer = onegan.extension.Colorizer(
             colors=[
@@ -49,18 +49,13 @@ class Predictor:
 @click.option('--input_size', default=(320, 320), type=(int, int))
 def main(device, video, weight, input_size):
     demo = Predictor(input_size, weight_path=weight)
-
-    reader = video if video else device
-    cap = cv2.VideoCapture(reader)
+    cap = cv2.VideoCapture(video if video else device)
 
     while True:
         ret, frame = cap.read()
-
         if not ret:
             break
-
         output = demo.process(frame[:, :, ::-1])
-
         cv2.imshow('layout', output[:, :, ::-1])
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

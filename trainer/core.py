@@ -21,6 +21,7 @@ class LayoutSeg(pl.LightningModule):
         self.l1_factor = l1_factor
         self.l2_factor = l2_factor
         self.edge_factor = edge_factor
+        self.save_hyperparameters()
 
     def forward(self, inputs):
         scores = self.model(inputs)
@@ -31,7 +32,7 @@ class LayoutSeg(pl.LightningModule):
         inputs = batch['image']
         targets = batch['label']
         scores, outputs = self(inputs)
-        loss_terms = self.criterion(scores, outputs, None, targets, batch)
+        loss_terms = self.criterion(scores, outputs, targets, batch)
 
         if self.global_step % 100 == 0:
             self.logger.experiment.add_image(
@@ -54,7 +55,7 @@ class LayoutSeg(pl.LightningModule):
         metric_terms = self.metric(outputs, targets)
         self.log_dict(metric_terms, logger=True)
 
-        loss_terms = self.criterion(scores, outputs, None, targets, batch)
+        loss_terms = self.criterion(scores, outputs, targets, batch)
         loss = loss_terms['loss/loss']
         loss_terms = {f'val_{k}': v for k, v in loss_terms.items()}
         self.log_dict(loss_terms, logger=True)
@@ -62,9 +63,13 @@ class LayoutSeg(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': ReduceLROnPlateau(optimizer),
+            'monitor': 'val_loss/loss'
+        }
 
-    def criterion(self, score, prediction, pred_type, target, data):
+    def criterion(self, score, prediction, target, data):
         def layout_gradient(output, σ=5.0):
             return 1 - torch.exp(-sobel(output.unsqueeze(1).float()) / σ)
 
