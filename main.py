@@ -8,8 +8,6 @@ from trainer import core
 
 
 def create_dataset(args):
-    assert args.batch_size > 1
-
     module = importlib.import_module(f'datasets.{args.dataset}')
     Dataset = getattr(module, {
         'lsunroom': 'LsunRoomDataset',
@@ -21,7 +19,7 @@ def create_dataset(args):
 
     return (
         train_dataset.to_loader(batch_size=args.batch_size, num_workers=args.worker),
-        val_dataset.to_loader(batch_size=args.batch_size, num_workers=args.worker),
+        val_dataset.to_loader(batch_size=1, num_workers=args.worker),
     )
 
 
@@ -30,6 +28,10 @@ def main(args):
 
     train_loader, val_loader = create_dataset(args)
     if args.phase == 'train':
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(
+            dirpath=f'ckpts/{args.name}', filename='{step}-{val_loss:.6f}',
+            save_top_k=5, monitor='val_loss/loss',
+        )
         model = core.LayoutSeg(
             lr=args.lr, backbone=args.backbone,
             l1_factor=args.l1_factor, l2_factor=args.l2_factor, edge_factor=args.edge_factor
@@ -37,19 +39,17 @@ def main(args):
         trainer = pl.Trainer(
             gpus=1,
             max_epochs=args.epoch,
-            resume_from_checkpoint=args.pretrain_path,
-            checkpoint_callback=pl.ModelCheckpoint('ckpts', filename='{step}-{val_loss:.2f}', save_top_k=5),
+            resume_from_checkpoint=args.pretrain_path or None,
+            callbacks=[checkpoint_callback],
             logger=pl.loggers.TensorBoardLogger('ckpts/logs', name=args.name),
             accumulate_grad_batches=2,
         )
         trainer.fit(model, train_loader, val_loader)
     elif args.phase == 'eval':
         model = core.LayoutSeg.load_from_checkpoint(args.pretrain_path, backbone=args.backbone)
-        acc_score = 0
-        for i, batch in enumerate(val_loader, start=1):
-            metrics = model.test_step(batch, i)
-            acc_score += metrics['score'] * args.batch_size
-        logger.info(f'Mean on batched scores: {acc_score / len(val_loader.dataset)}')
+        trainer = pl.Trainer(gpus=1, logger=None)
+        result = trainer.test(model, val_loader)
+        logger.info(f'Validate score on {args.dataset}: {result[0]["score"]}')
 
 
 if __name__ == '__main__':

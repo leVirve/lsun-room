@@ -2,19 +2,26 @@
 
 ![one_lsun_result_banner](./doc/banner.png)
 
-[Hung Jin Lin](https://tw.linkedin.com/in/hung-jin-lin-5b66119b), [Sheng-Wei Huang](https://www.linkedin.com/in/sheng-wei-huang), [Shang-Hong Lai](https://tw.linkedin.com/in/shang-hong-lai-4913a0b), [Chen-Kuo Chiang](https://www.cs.ccu.edu.tw/~ckchiang/).
+## Paper
 
-International Conference on Pattern Recognition (ICPR), 2018.
+[Indoor Scene Layout Estimation from a Single Image](https://ieeexplore.ieee.org/document/8546278).
 
-## Information
+[Hung Jin Lin](https://tw.linkedin.com/in/hung-jin-lin-5b66119b), [Sheng-Wei Huang](https://www.linkedin.com/in/sheng-wei-huang), [Shang-Hong Lai](https://tw.linkedin.com/in/shang-hong-lai-4913a0b), [Chen-Kuo Chiang](https://www.cs.ccu.edu.tw/~ckchiang/) National Tsing Hua University.<br>
+International Conference on Pattern Recognition (ICPR), 2018. <br>
+Read in public [[PDF]](./doc/icpr2018_lin_layoutestimation.pdf).
 
-Conference paper in [PDF](./doc/icpr2018_lin_layoutestimation.pdf).
+## Citation
 
-Pre-trained weight at [Google Drive](https://drive.google.com/file/d/1aUJoXM9SQMe0LC38pA8v8r43pPOAaQ-a/view?usp=sharing).
+If you find the work is useful, please use the following BibTeX entry.
 
-> Cannot provide original checkpoint in paper due to the agreement, so this is a re-trained checkpoint for fast evaluation.
-
-Updated Feb 2021.
+```bibtex
+@inproceedings{lin2018layoutestimation,
+    Author = {Hung Jin Lin and Sheng-Wei Huang and Shang-Hong Lai and Chen-Kuo Chiang},
+    Title = {Indoor Scene Layout Estimation from a Single Image},
+    Booktitle = {2018 24th International Conference on Pattern Recognition (ICPR)},
+    Year = {2018}
+}
+```
 
 ## Prerequisite
 
@@ -35,25 +42,33 @@ Updated Feb 2021.
   <!-- - layout segments (not perfect) [layout.zip](https://web.archive.org/web/20170221111502/http://lsun.cs.princeton.edu/challenge/2015/roomlayout/data/layout.zip) -->
   <!-- - Fortunately, you can find them in https://github.com/liamw96/pytorch.room.layout#data. [@liamw96](https://github.com/liamw96) provides dataset image in the `lsun.zip` on Google drive! -->
 
+## Checkpoint
+
+Pre-trained weight at [Google Drive](https://drive.google.com/file/d/1aUJoXM9SQMe0LC38pA8v8r43pPOAaQ-a/view?usp=sharing).
+
+> Cannot provide original checkpoint in paper due to the agreement, so this is a re-trained checkpoint for fast evaluation.
+
+Updated Jan 2021.
+
 ## Usage
 
 Thanks [@shuuchen](https://github.com/shuuchen) for an all-in-one project, you may also refer to <https://github.com/shuuchen/lsun-room-dsc>!
 
 - Training
 
-  - Dataset **LSUN Room Layout Dataset** into folder `./data/lsun_room`.
-    - `images/`: RGB color image `*.jpg` of indoor room scene
-    - `layout_seg/`: layout ground truth `*.mat` of indoor room scene
+  - Dataset **LSUN Room Layout Dataset** into the folders of `./data/lsun_room`.
+    - `images/`: RGB image `*.jpg` of indoor room scene
+    - `layout_seg/`: layout ground truth `*.mat` planar segmentation
 
-  - The trained model will be saved to folder `./ckpts`
+  - Trained model will be saved to folder `./ckpts`
 
   ```bash
-  python main.py --phase train --arch resnet --edge_factor 0.2 --l2_factor 0.2 --name baseline
+  python main.py --phase train --edge_factor 0.2 --l2_factor 0.2 --name baseline
   ```
 
 - Validation
 
-  - Validate on LSUN Room/Hedau datasets.
+  - Validate on LSUN-Room / Hedau datasets.
 
   ```bash
   python main.py --phase eval --dataset hedau --folder ./data/hedau --pretrain_path {checkpoint_path}
@@ -61,13 +76,17 @@ Thanks [@shuuchen](https://github.com/shuuchen) for an all-in-one project, you m
 
 - Testing
 
-  - On your image
+  - On your photo or image sequence
 
   ```bash
-  python demo.py image --weight {checkpoint_path} --path {file_path}
+  # single image
+  python demo.py image --weight {checkpoint_path} --path {image_filepath}
+
+  # images in folder
+  python demo.py image --weight {checkpoint_path} --path {image_folder}
   ```
 
-  - On video and webcam
+  - On video or webcam
 
   ```bash
   # video
@@ -86,17 +105,6 @@ Thanks [@shuuchen](https://github.com/shuuchen) for an all-in-one project, you m
   # you may need to modify the official Matlab code to evaluate your results.
   matlab -nojvm -nodisplay -nosplash -r "demo('$EXPERIMENT_OUTPUT_FOLDER'); exit;"
   ```
-
-## Citation
-
-```bibtex
-@inproceedings{lin2018layoutestimation,
-    Author = {Hung Jin Lin and Sheng-Wei Huang and Shang-Hong Lai and Chen-Kuo Chiang},
-    Title = {Indoor Scene Layout Estimation from a Single Image},
-    Booktitle = {2018 24th International Conference on Pattern Recognition (ICPR)},
-    Year = {2018}
-}
-```
 
 ## More Results
 

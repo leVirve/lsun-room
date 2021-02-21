@@ -62,14 +62,13 @@ class LayoutSeg(pl.LightningModule):
         self.log_dict(loss_terms, logger=True)
         return loss
 
-    @torch.no_grad()
     def test_step(self, batch, batch_idx):
         inputs = batch['image']
         targets = batch['label']
         _, outputs = self(inputs)
 
         metric_terms = self.metric(outputs, targets)
-        logger.info(f'batch#{batch_idx}: {metric_terms}')
+        self.log('score', metric_terms['score'])
         return metric_terms
 
     def configure_optimizers(self):
