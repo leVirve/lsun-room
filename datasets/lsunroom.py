@@ -49,6 +49,7 @@ class LsunRoomDataset(torch.utils.data.Dataset):
 
         item = {
             'image': F.normalize(image, mean=0.5, std=0.5),
+            # make 0 into 255 as ignore index
             'label': (label[0] - 1).clamp_(0, 4).long(),
             'edge': torch.from_numpy(edge_map).clamp_(0, 1).float(),
             'type': layout_type,

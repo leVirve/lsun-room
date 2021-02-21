@@ -1,7 +1,5 @@
 import argparse
 import importlib
-import os
-os.environ['LOGURU_LEVEL'] = 'INFO'  # noqa
 
 import pytorch_lightning as pl
 from loguru import logger
@@ -31,23 +29,24 @@ def main(args):
     logger.info(args)
 
     train_loader, val_loader = create_dataset(args)
-    model = core.LayoutSeg(
-        lr=args.lr, backbone=args.backbone,
-        l1_factor=args.l1_factor, l2_factor=args.l2_factor, edge_factor=args.edge_factor
-    )
-
     if args.phase == 'train':
+        model = core.LayoutSeg(
+            lr=args.lr, backbone=args.backbone,
+            l1_factor=args.l1_factor, l2_factor=args.l2_factor, edge_factor=args.edge_factor
+        )
         trainer = pl.Trainer(
             gpus=1,
             max_epochs=args.epoch,
+            resume_from_checkpoint=args.pretrain_path,
             default_root_dir=f'ckpts/{args.name}',
-            logger=pl.loggers.TensorBoardLogger('ckpts/tb_logs', name=args.name),
+            logger=pl.loggers.TensorBoardLogger('ckpts/logs', name=args.name),
             accumulate_grad_batches=2,
-            callbacks=[pl.callbacks.GPUStatsMonitor()]
         )
         trainer.fit(model, train_loader, val_loader)
     elif args.phase == 'eval':
-        val_loader
+        model = core.LayoutSeg.load_from_checkpoint(args.pretrain_path, backbone=args.backbone)
+        trainer = pl.Trainer()
+        trainer.test(model, val_loader)
 
 
 if __name__ == '__main__':

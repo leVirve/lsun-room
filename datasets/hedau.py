@@ -2,54 +2,53 @@ import os
 import pathlib
 
 import torch
-import numpy as np
-import scipy.io as sio
-import torchvision.transforms as T
+from scipy.io import loadmat
 import torchvision.transforms.functional as F
 from PIL import Image
-from onegan.io.loader import load_image, BaseDataset
-from onegan.io.transform import SegmentationPair
 
 
-class HedauDataset(BaseDataset):
+class HedauDataset(torch.utils.data.Dataset):
 
-    num_classes = 5
-
-    def __init__(self, phase, args, **kwarges):
+    def __init__(self, phase, folder, image_size):
+        assert phase in ('training', 'validation')
         self.phase = phase
-        self.target_size = (args.image_size, args.image_size)
+        self.root = pathlib.Path(folder)
+        self.target_size = (image_size, image_size)
 
-        root_path = pathlib.Path(args.folder)
-        phase = 'test' if phase == 'val' else 'train'
-        index_meta = self.get_index_meta(phase, root_path)
-        images = sorted((root_path / 'image').glob('*.jpg'))
-        labels = sorted((root_path / 'layout').glob('*.mat'))
-
+        index_meta = load_hedau_mat(
+            self.root / 'traintestind.mat',
+            phase='test' if phase == 'validation' else 'train')
+        images = sorted((self.root / 'image').glob('*.jpg'))
+        labels = sorted((self.root / 'layout').glob('*.mat'))
         self.filenames = [(images[index], labels[index]) for index in index_meta]
-        self.paired_transform = SegmentationPair(self.target_size, final_transform=True)
-        self.image_transform = T.Compose([
-            T.ToTensor(),
-            T.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5]),
-        ])
-
-    def get_index_meta(self, phase, path):
-        return sio.loadmat(path / 'traintestind.mat')[f'{phase}ind'][0] - 1
 
     def __getitem__(self, index):
         image_path, label_path = self.filenames[index]
 
-        image = load_image(image_path).convert('RGB')
-        layout = Image.fromarray(sio.loadmat(label_path)['fields'])
+        image = F.to_tensor(Image.open(image_path).convert('RGB'))
+        label = torch.from_numpy(loadmat(label_path)['fields'])[None]
 
         image = F.resize(image, self.target_size, interpolation=Image.BILINEAR)
-        layout = F.resize(layout, self.target_size, interpolation=Image.NEAREST)
+        label = F.resize(label, self.target_size, interpolation=Image.NEAREST)
 
-        image = self.image_transform(image)
-        layout = np.array(layout)
-        layout[layout == 6] = 0
-        layout = torch.from_numpy(layout - 1).long()
-
-        return {'image': image, 'label': layout, 'path': os.path.basename(image_path)}
+        label[label == 6] = 0
+        return {
+            'image': F.normalize(image, mean=0.5, std=0.5),
+            # make 0 into 255 as ignore index
+            'label': (label[0] - 1).long(),
+            'path': os.path.basename(image_path)
+        }
 
     def __len__(self):
         return len(self.filenames)
+
+    def to_loader(self, batch_size, num_workers=0):
+        return torch.utils.data.DataLoader(
+            self, batch_size=batch_size, shuffle=self.phase == 'training',
+            pin_memory=True, num_workers=num_workers
+        )
+
+
+def load_hedau_mat(filepath: pathlib.Path, phase: str):
+    # one-based -> zero-based
+    return loadmat(filepath)[f'{phase}ind'].squeeze() - 1

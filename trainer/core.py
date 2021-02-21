@@ -3,6 +3,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
 from kornia.filters import sobel
+from loguru import logger
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchvision.utils import make_grid
 
@@ -61,6 +62,14 @@ class LayoutSeg(pl.LightningModule):
         self.log_dict(loss_terms, logger=True)
         return loss
 
+    def test_step(self, batch, batch_idx):
+        inputs = batch['image']
+        targets = batch['label']
+        _, outputs = self(inputs)
+
+        metric_terms = self.metric(outputs, targets)
+        logger.info(metric_terms)
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return {
@@ -84,6 +93,7 @@ class LayoutSeg(pl.LightningModule):
         if self.l1_factor or self.l2_factor:
             l_loss = F.mse_loss if self.l2_factor else F.l1_loss
             l1_λ = self.l1_factor or self.l2_factor
+            # TODO ignore 255
             onehot_target = torch.zeros_like(score).scatter_(1, target.unsqueeze(1), 1)
             l1_loss = l_loss(score, onehot_target)
             loss += l1_loss * l1_λ
