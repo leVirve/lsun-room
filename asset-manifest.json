@@ -1,0 +1,19 @@
+{
+  "files": {
+    "main.js": "/lsun-room/static/js/main.6bb4aa2f.chunk.js",
+    "main.js.map": "/lsun-room/static/js/main.6bb4aa2f.chunk.js.map",
+    "runtime-main.js": "/lsun-room/static/js/runtime-main.b3f2fd6d.js",
+    "runtime-main.js.map": "/lsun-room/static/js/runtime-main.b3f2fd6d.js.map",
+    "static/js/2.66e49f1f.chunk.js": "/lsun-room/static/js/2.66e49f1f.chunk.js",
+    "static/js/2.66e49f1f.chunk.js.map": "/lsun-room/static/js/2.66e49f1f.chunk.js.map",
+    "index.html": "/lsun-room/index.html",
+    "precache-manifest.ed9e1e6485b93a0832f3a9a159ee2030.js": "/lsun-room/precache-manifest.ed9e1e6485b93a0832f3a9a159ee2030.js",
+    "service-worker.js": "/lsun-room/service-worker.js",
+    "static/js/2.66e49f1f.chunk.js.LICENSE.txt": "/lsun-room/static/js/2.66e49f1f.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.b3f2fd6d.js",
+    "static/js/2.66e49f1f.chunk.js",
+    "static/js/main.6bb4aa2f.chunk.js"
+  ]
+}
