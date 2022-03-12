@@ -4,7 +4,7 @@ decorator==4.4.2
 imageio==2.9.0
 kornia==0.4.1
 opencv-python==4.5.1.48
-pillow==8.2.0
+pillow==9.0.1
 pytorch-lightning==1.2
 scikit-image==0.18.1
 scipy==1.6.0
