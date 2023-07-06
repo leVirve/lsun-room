@@ -1,4 +1,4 @@
-﻿click==7.1.2
+click==7.1.2
 cycler==0.10.0
 decorator==4.4.2
 imageio==2.9.0
@@ -7,7 +7,7 @@ opencv-python==4.5.1.48
 pillow==8.2.0
 pytorch-lightning==1.2
 scikit-image==0.18.1
-scipy==1.6.0
+scipy==1.10.0
 tensorboardx==2.1
 # torch==1.7.1; python_full_version >= '3.6.2'
 tqdm==4.56.0
