@@ -1,11 +1,11 @@
-﻿click==7.1.2
+click==7.1.2
 cycler==0.10.0
 decorator==4.4.2
 imageio==2.9.0
 kornia==0.4.1
 opencv-python==4.5.1.48
 pillow==8.2.0
-pytorch-lightning==1.2
+pytorch-lightning==1.6.0
 scikit-image==0.18.1
 scipy==1.6.0
 tensorboardx==2.1
